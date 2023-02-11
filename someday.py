@@ -57,13 +57,13 @@ def get_items():
 # An utility class for showing a browsable list
 
 class List:
-    def __init__(self, items, screen, topy, topx, boty, botx):
+    def __init__(self, items, screen, minrow, mincol, maxrow, maxcol):
         self._items = items
         self._screen = screen
-        self._topy = topy
-        self._topx = topx
-        self._height = boty - topy + 1
-        self._width = botx - topx + 1
+        self._minrow = minrow
+        self._mincol = mincol
+        self._height = maxrow - minrow + 1
+        self._width = maxcol - mincol + 1
         self._first_item = 0
         self._selected_row = 0
 
@@ -72,7 +72,7 @@ class List:
             if i >= self._height:
                 break
             color = 2 if i == self._selected_row else 1
-            self._screen.addstr(self._topy + i, self._topx, item[:self._width], curses.color_pair(color))
+            self._screen.addstr(self._minrow + i, self._mincol, item[:self._width], curses.color_pair(color))
 
     def up(self):
         if self._selected_row > 0:
@@ -167,17 +167,17 @@ def main(stdscr):
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True).stdout
 
-def expand_item(item, topy, topx, boty, botx):
-    topy -= 1
-    width = botx - topx + 1
+def expand_item(item, minrow, mincol, maxrow, maxcol):
+    minrow -= 1
+    width = maxcol - mincol + 1
     lines = textwrap.wrap(item, width-2)
     height = len(lines) + 2
     pad = curses.newpad(height, width)
     pad.border()
     for i, line in enumerate(lines):
         pad.addstr(i+1, 1, line)
-    topy = min(topy, boty - height + 1)
-    pad.refresh(0, 0, topy, topx, boty, botx)
+    minrow = min(minrow, maxrow - height + 1)
+    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
     pad.getch()
 
 if __name__ == "__main__":
