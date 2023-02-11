@@ -30,6 +30,7 @@ def erase(selected_item, minrow, mincol, maxrow, maxcol):
 
 menu = [Action("e", "Erase", erase)]
 key_bindings = {x.key: x.action for x in menu}
+key_bindings[curses.KEY_DC] = erase
 
 def expand_item(selected_item, minrow, mincol, maxrow, maxcol):
     minrow -= 1
@@ -206,6 +207,10 @@ def main(stdscr):
             selected_item = item_list.selected_item()
             if key == 10:
                 expand_item(selected_item, row, 0, last_row, width-1)
+            elif key in key_bindings:
+                key_bindings[key](selected_item, row, 0, last_row, width-1)
+            elif key in key_bindings:
+                key_bindings[key](selected_item, row, 0, last_row, width-1)
             else:
                 key = chr(key).lower()
                 if key == "q":
