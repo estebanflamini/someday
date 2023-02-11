@@ -6,10 +6,31 @@ import textwrap
 import os
 import re
 import sys
+from collections import namedtuple
 
 calendar = None
 proxy_calendar = None
 calendar_lines = []
+
+Action = namedtuple("Action", ["key", "name", "action"])
+
+def tmp(item, line_number, minrow, mincol, maxrow, maxcol):
+
+    minrow -= 1
+    width = maxcol - mincol + 1
+    lines = textwrap.wrap(item, width-2)
+    lines.insert(0, str(line_number))
+    height = len(lines) + 2
+    pad = curses.newpad(height, width)
+    pad.border()
+    for i, line in enumerate(lines):
+        pad.addstr(i+1, 1, line)
+    minrow = min(minrow, maxrow - height + 1)
+    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
+    pad.getch()
+
+menu = [Action("t", "Tmp", tmp)]
+key_bindings = {x.key: x.action for x in menu}
 
 def initialize():
     global calendar
@@ -113,13 +134,10 @@ def main(stdscr):
     menu_row = height - 1
 
     # Get the list of items
-    items, _ = get_items()
+    items, line_numbers = get_items()
 
     # Create an onscreen list for showing the items
     item_list = List(items, stdscr, first_row, 0, last_row, width-1)
-
-    # Define a menu of actions to be applied to the selected item
-    menu = ["Action 1", "Action 2", "Action 3"]
 
     # Initialize the selected action
     selected_action = 0
@@ -142,7 +160,7 @@ def main(stdscr):
         # Draw the menu of actions
         for i, action in enumerate(menu):
             color = 2 if i == selected_action else 1
-            stdscr.addstr(menu_row, i * (width // len(menu)), action, curses.color_pair(color))
+            stdscr.addstr(menu_row, i * (width // len(menu)), action.name, curses.color_pair(color))
 
         stdscr.refresh()
 
@@ -158,11 +176,20 @@ def main(stdscr):
             selected_action -= 1
         elif key == curses.KEY_RIGHT and selected_action < len(menu) - 1:
             selected_action += 1
-        elif key == 10:
+        else:
+            item = items[item_list.selected_item()]
+            line_number = line_numbers[item_list.selected_item()]
             row = first_row + item_list.selected_row()
-            expand_item(items[item_list.selected_item()], row, 0, last_row, width-1)
-        elif chr(key).lower() == "q":
-            break
+            if key == 10:
+                expand_item(item, row, 0, last_row, width-1)
+            else:
+                key = chr(key).lower()
+                if key == "q":
+                    break
+                elif key == " ":
+                    menu[selected_action].action(item, line_number, row, 0, last_row, width-1)
+                elif key in key_bindings:
+                    key_bindings[key](item, line_number, row, 0, last_row, width-1)
 
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True).stdout
