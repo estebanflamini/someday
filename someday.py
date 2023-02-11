@@ -12,13 +12,17 @@ calendar = None
 proxy_calendar = None
 calendar_lines = []
 
+items = []
+line_numbers = []
+
 Action = namedtuple("Action", ["key", "name", "action"])
 
-def tmp(item, line_number, minrow, mincol, maxrow, maxcol):
-
+def tmp(selected_item, minrow, mincol, maxrow, maxcol):
     minrow -= 1
     width = maxcol - mincol + 1
+    item = items[selected_item]
     lines = textwrap.wrap(item, width-2)
+    line_number = line_numbers[selected_item]
     lines.insert(0, str(line_number))
     height = len(lines) + 2
     pad = curses.newpad(height, width)
@@ -32,9 +36,10 @@ def tmp(item, line_number, minrow, mincol, maxrow, maxcol):
 menu = [Action("t", "Tmp", tmp)]
 key_bindings = {x.key: x.action for x in menu}
 
-def expand_item(item, minrow, mincol, maxrow, maxcol):
+def expand_item(selected_item, minrow, mincol, maxrow, maxcol):
     minrow -= 1
     width = maxcol - mincol + 1
+    item = items[selected_item]
     lines = textwrap.wrap(item, width-2)
     height = len(lines) + 2
     pad = curses.newpad(height, width)
@@ -83,13 +88,14 @@ def generate_proxy_calendar():
 # Use the temporary file created above as input for when to get a list of items along with their line numbers
 
 def get_items():
+    global items
+    global line_numbers
+
     tmp = subprocess.run(["when", "--calendar=%s" % proxy_calendar, "--noheader", "--wrap=0"],
                          capture_output=True, text=True, check=True).stdout
     tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
     items = [x[0] for x in tmp]
     line_numbers = [int(x[1]) for x in tmp]
-
-    return items, line_numbers
 
 # An utility class for showing a browsable list
 
@@ -150,7 +156,7 @@ def main(stdscr):
     menu_row = height - 1
 
     # Get the list of items
-    items, line_numbers = get_items()
+    get_items()
 
     # Create an onscreen list for showing the items
     item_list = List(items, stdscr, first_row, 0, last_row, width-1)
@@ -193,19 +199,18 @@ def main(stdscr):
         elif key == curses.KEY_RIGHT and selected_action < len(menu) - 1:
             selected_action += 1
         else:
-            item = items[item_list.selected_item()]
-            line_number = line_numbers[item_list.selected_item()]
             row = first_row + item_list.selected_row()
+            selected_item = item_list.selected_item()
             if key == 10:
-                expand_item(item, row, 0, last_row, width-1)
+                expand_item(selected_item, row, 0, last_row, width-1)
             else:
                 key = chr(key).lower()
                 if key == "q":
                     break
                 elif key == " ":
-                    menu[selected_action].action(item, line_number, row, 0, last_row, width-1)
+                    menu[selected_action].action(selected_item, row, 0, last_row, width-1)
                 elif key in key_bindings:
-                    key_bindings[key](item, line_number, row, 0, last_row, width-1)
+                    key_bindings[key](selected_item, row, 0, last_row, width-1)
 
 if __name__ == "__main__":
     try:
