@@ -7,6 +7,7 @@ import os
 import re
 import sys
 from collections import namedtuple
+from shutil import copyfile
 
 calendar = None
 proxy_calendar = None
@@ -14,26 +15,20 @@ calendar_lines = []
 
 items = []
 line_numbers = []
+modified = False
 
 Action = namedtuple("Action", ["key", "name", "action"])
 
-def tmp(selected_item, minrow, mincol, maxrow, maxcol):
-    minrow -= 1
-    width = maxcol - mincol + 1
-    item = items[selected_item]
-    lines = textwrap.wrap(item, width-2)
-    line_number = line_numbers[selected_item]
-    lines.insert(0, str(line_number))
-    height = len(lines) + 2
-    pad = curses.newpad(height, width)
-    pad.border()
-    for i, line in enumerate(lines):
-        pad.addstr(i+1, 1, line)
-    minrow = min(minrow, maxrow - height + 1)
-    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
-    pad.getch()
+def erase(selected_item, minrow, mincol, maxrow, maxcol):
+    global modified
 
-menu = [Action("t", "Tmp", tmp)]
+    line_number = line_numbers[selected_item]
+    del calendar_lines[line_number]
+    del items[selected_item]
+    del line_numbers[selected_item]
+    modified = True
+
+menu = [Action("e", "Erase", erase)]
 key_bindings = {x.key: x.action for x in menu}
 
 def expand_item(selected_item, minrow, mincol, maxrow, maxcol):
@@ -96,6 +91,14 @@ def get_items():
     tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
     items = [x[0] for x in tmp]
     line_numbers = [int(x[1]) for x in tmp]
+
+# Rewrite the calendar
+
+def write_calendar():
+    copyfile(calendar, calendar + "~")
+    with open(calendar, "w") as f:
+        for line in calendar_lines:
+            print(line, file=f)
 
 # An utility class for showing a browsable list
 
@@ -217,5 +220,7 @@ if __name__ == "__main__":
         initialize()
         generate_proxy_calendar()
         curses.wrapper(main)
+        if modified:
+            write_calendar()
     finally:
         cleanup()
