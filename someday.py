@@ -82,7 +82,7 @@ def generate_proxy_calendar():
         for line in lines:
             tmp_line = "%s-%s" % (line, i) if line.strip() else line
             print(tmp_line, file=outfile)
-            calendar_lines.append(tmp_line)
+            calendar_lines.append(line)
             i += 1
 
 # Use the temporary file created above as input for when to get a list of items along with their line numbers
