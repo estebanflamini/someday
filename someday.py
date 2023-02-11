@@ -32,6 +32,22 @@ def tmp(item, line_number, minrow, mincol, maxrow, maxcol):
 menu = [Action("t", "Tmp", tmp)]
 key_bindings = {x.key: x.action for x in menu}
 
+def expand_item(item, minrow, mincol, maxrow, maxcol):
+    minrow -= 1
+    width = maxcol - mincol + 1
+    lines = textwrap.wrap(item, width-2)
+    height = len(lines) + 2
+    pad = curses.newpad(height, width)
+    pad.border()
+    for i, line in enumerate(lines):
+        pad.addstr(i+1, 1, line)
+    minrow = min(minrow, maxrow - height + 1)
+    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
+    pad.getch()
+
+def get_date():
+    return subprocess.run(["when", "d"], capture_output=True).stdout
+
 def initialize():
     global calendar
     global proxy_calendar
@@ -190,22 +206,6 @@ def main(stdscr):
                     menu[selected_action].action(item, line_number, row, 0, last_row, width-1)
                 elif key in key_bindings:
                     key_bindings[key](item, line_number, row, 0, last_row, width-1)
-
-def get_date():
-    return subprocess.run(["when", "d"], capture_output=True).stdout
-
-def expand_item(item, minrow, mincol, maxrow, maxcol):
-    minrow -= 1
-    width = maxcol - mincol + 1
-    lines = textwrap.wrap(item, width-2)
-    height = len(lines) + 2
-    pad = curses.newpad(height, width)
-    pad.border()
-    for i, line in enumerate(lines):
-        pad.addstr(i+1, 1, line)
-    minrow = min(minrow, maxrow - height + 1)
-    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
-    pad.getch()
 
 if __name__ == "__main__":
     try:
