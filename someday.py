@@ -87,7 +87,7 @@ def get_items():
                          capture_output=True, text=True, check=True).stdout
     tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
     items = [x[0] for x in tmp]
-    line_numbers = [x[1] for x in tmp]
+    line_numbers = [int(x[1]) for x in tmp]
 
     return items, line_numbers
 
