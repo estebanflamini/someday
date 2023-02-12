@@ -96,7 +96,7 @@ def get_items():
 # Rewrite the calendar
 
 def write_calendar():
-    copyfile(calendar, calendar + "~")
+    copyfile(calendar, calendar + ".SOMEDAY.BAK")
     with open(calendar, "w") as f:
         for line in calendar_lines:
             print(line, file=f)
