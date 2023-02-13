@@ -216,7 +216,7 @@ def main(stdscr, calendar):
             selected_action += 1
         elif chr(key).lower() == 'q':
             break
-        else:
+        elif not calendar.no_items():
             row = first_row + item_list.selected_row()
             selected_item = item_list.selected_item()
             if key == 32:
