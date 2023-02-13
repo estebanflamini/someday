@@ -32,8 +32,10 @@ class Calendar:
 
         self.proxy_calendar = self.calendar + ".SOMEDAY"
 
+        with open(self.calendar) as infile:
+            self.calendar_lines = infile.read().splitlines()
+
         self.line_numbers = []
-        self.calendar_lines = []
         self.modified = False
 
     def check_no_proxy_calendar_exists(self):
@@ -46,15 +48,11 @@ class Calendar:
     # Copy the when's calendary to a temporary file where each non-empty line is line-numbered
 
     def generate_proxy_calendar(self):
-        self.calendar_lines.clear()
-        with open(self.calendar) as infile:
-            lines = infile.read().splitlines()
         i = 0
         with open(self.proxy_calendar, "w") as outfile:
-            for line in lines:
+            for line in self.calendar_lines:
                 tmp_line = "%s-%s" % (line, i) if line.strip() else line
                 print(tmp_line, file=outfile)
-                self.calendar_lines.append(line)
                 i += 1
 
     # Use the temporary file created above as input for when to get a list of items along with their line numbers
