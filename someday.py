@@ -110,10 +110,16 @@ def generate_menu_and_key_bindings(calendar):
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True).stdout
 
-# An utility class for browsing the calendar's items
+# A singleton for browsing the calendar's items
 
 class List:
-    def __init__(self, calendar, screen, minrow, mincol, maxrow, maxcol):
+    def __new__(cls, calendar, screen, minrow, mincol, maxrow, maxcol):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(List, cls).__new__(cls)
+            cls.instance._initialize(calendar, screen, minrow, mincol, maxrow, maxcol)
+        return cls.instance
+
+    def _initialize(self, calendar, screen, minrow, mincol, maxrow, maxcol):
         self._calendar = calendar
         self._screen = screen
         self._minrow = minrow
