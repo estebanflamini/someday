@@ -78,6 +78,20 @@ class Calendar:
 
     # Actions on the calendar
 
+    def expand_item(self, selected_item, minrow, mincol, maxrow, maxcol):
+        minrow -= 1
+        width = maxcol - mincol + 1
+        item = self._items[selected_item]
+        lines = textwrap.wrap(item, width-2)
+        height = len(lines) + 2
+        pad = curses.newpad(height, width)
+        pad.border()
+        for i, line in enumerate(lines):
+            pad.addstr(i+1, 1, line)
+        minrow = min(minrow, maxrow - height + 1)
+        pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
+        pad.getch()
+
     def erase(self, selected_item, minrow, mincol, maxrow, maxcol):
         line_number = self._line_numbers[selected_item]
         del self._calendar_lines[line_number]
@@ -86,25 +100,12 @@ class Calendar:
 
 Action = namedtuple("Action", ["key", "name", "action"])
 
-def generate_menu(calendar):
+def generate_menu_and_key_bindings(calendar):
     menu = [Action("e", "Erase", calendar.erase)]
-    key_bindings = {x.key: x.action for x in menu}
+    key_bindings = {ord(x.key): x.action for x in menu}
     key_bindings[curses.KEY_DC] = calendar.erase
+    key_bindings[10] = calendar.expand_item
     return menu, key_bindings
-
-def expand_item(selected_item, minrow, mincol, maxrow, maxcol):
-    minrow -= 1
-    width = maxcol - mincol + 1
-    item = items[selected_item]
-    lines = textwrap.wrap(item, width-2)
-    height = len(lines) + 2
-    pad = curses.newpad(height, width)
-    pad.border()
-    for i, line in enumerate(lines):
-        pad.addstr(i+1, 1, line)
-    minrow = min(minrow, maxrow - height + 1)
-    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
-    pad.getch()
 
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True).stdout
@@ -171,7 +172,7 @@ def main(stdscr, calendar):
     item_list = List(calendar, stdscr, first_row, 0, last_row, width-1)
 
     # Generate the menu and key bindings
-    menu, key_bindings = generate_menu(calendar)
+    menu, key_bindings = generate_menu_and_key_bindings(calendar)
 
     # Initialize the selected action
     selected_action = 0
@@ -210,23 +211,15 @@ def main(stdscr, calendar):
             selected_action -= 1
         elif key == curses.KEY_RIGHT and selected_action < len(menu) - 1:
             selected_action += 1
+        elif chr(key).lower() == 'q':
+            break
         else:
             row = first_row + item_list.selected_row()
             selected_item = item_list.selected_item()
-            if key == 10:
-                expand_item(selected_item, row, 0, last_row, width-1)
+            if key == 32:
+                menu[selected_action].action(selected_item, row, 0, last_row, width-1)
             elif key in key_bindings:
                 key_bindings[key](selected_item, row, 0, last_row, width-1)
-            elif key in key_bindings:
-                key_bindings[key](selected_item, row, 0, last_row, width-1)
-            else:
-                key = chr(key).lower()
-                if key == "q":
-                    break
-                elif key == " ":
-                    menu[selected_action].action(selected_item, row, 0, last_row, width-1)
-                elif key in key_bindings:
-                    key_bindings[key](selected_item, row, 0, last_row, width-1)
 
 if __name__ == "__main__":
     calendar = Calendar()
