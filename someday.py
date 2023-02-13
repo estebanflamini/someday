@@ -120,11 +120,13 @@ class List:
         self._mincol = mincol
         self._height = maxrow - minrow + 1
         self._width = maxcol - mincol + 1
+        self._items = []
         self._first_item = 0
         self._selected_row = 0
 
     def show(self):
-        for i, item in enumerate(calendar.get_items()[self._first_item:]):
+        self._items = calendar.get_items()
+        for i, item in enumerate(self._items[self._first_item:]):
             if i >= self._height:
                 break
             color = 2 if i == self._selected_row else 1
@@ -137,9 +139,10 @@ class List:
             self._first_item -= 1
 
     def down(self):
-        if self._selected_row < self._height - 1:
+        if self._first_item + self._selected_row < len(self._items) - 1:
+          if self._selected_row < self._height - 1:
             self._selected_row += 1
-        elif self._first_item + self._selected_row < len(self._items) - 1:
+          else:
             self._first_item += 1
 
     def selected_item(self):
