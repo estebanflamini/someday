@@ -132,11 +132,14 @@ class List:
 
     def show(self):
         self._items = calendar.get_items()
-        for i, item in enumerate(self._items[self._first_item:]):
-            if i >= self._height:
-                break
-            color = 2 if i == self._selected_row else 1
-            self._screen.addstr(self._minrow + i, self._mincol, item[:self._width], curses.color_pair(color))
+        if self._items:
+            for i, item in enumerate(self._items[self._first_item:]):
+                if i >= self._height:
+                    break
+                color = 2 if i == self._selected_row else 1
+                self._screen.addstr(self._minrow + i, self._mincol, item[:self._width], curses.color_pair(color))
+        else:
+            self._screen.addstr(self._minrow, self._mincol, "No items were found for today (and surrounding dates).")
 
     def up(self):
         if self._selected_row > 0:
@@ -196,10 +199,7 @@ def main(stdscr, calendar):
         stdscr.addstr(0, 0, get_date())
 
         # Draw the list of items
-        if calendar.no_items():
-            stdscr.addstr(first_row, 0, "No items were found for today (and surrounding dates).")
-        else:
-            item_list.show()
+        item_list.show()
 
         # Draw the menu of actions
         for i, action in enumerate(menu):
