@@ -9,15 +9,73 @@ import sys
 from collections import namedtuple
 from shutil import copyfile
 
-calendar = None
-proxy_calendar = None
-calendar_lines = []
+# A singleton for interacting with the calendar
 
-items = []
-line_numbers = []
-modified = False
+class Calendar:
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Calendar, cls).__new__(cls)
+            cls.instance._initialize()
+        return cls.instance
 
-Action = namedtuple("Action", ["key", "name", "action"])
+    def _initialize(self):
+        with open("%s/.when/preferences" % os.environ["HOME"]) as f:
+            prefs = f.read()
+        m = re.match(r"^\s*calendar\s*=\s*(.+)$", prefs, flags=re.MULTILINE)
+        if m is not None:
+            self.calendar = m.group(1).strip()
+        else:
+            sys.exit("No calendar configuration for 'when' was found.")
+
+# TODO: Eliminar esta línea cuando ya estés seguro de que anda bien
+        self.calendar = "%s/prog/someday/calendar" % os.environ["HOME"]
+
+        self.proxy_calendar = self.calendar + ".SOMEDAY"
+
+        self.line_numbers = []
+        self.calendar_lines = []
+        self.modified = False
+
+    def check_no_proxy_calendar_exists(self):
+        if os.path.exists(self.proxy_calendar):
+            sys.exit("The calendar seems to be in edition. Delete the file %s and try again." % self.proxy_calendar)
+
+    def cleanup_proxy_calendar(self):
+        os.unlink(self.proxy_calendar)
+
+    # Copy the when's calendary to a temporary file where each non-empty line is line-numbered
+
+    def generate_proxy_calendar(self):
+        self.calendar_lines.clear()
+        with open(self.calendar) as infile:
+            lines = infile.read().splitlines()
+        i = 0
+        with open(self.proxy_calendar, "w") as outfile:
+            for line in lines:
+                tmp_line = "%s-%s" % (line, i) if line.strip() else line
+                print(tmp_line, file=outfile)
+                self.calendar_lines.append(line)
+                i += 1
+
+    # Use the temporary file created above as input for when to get a list of items along with their line numbers
+
+    def get_items(self):
+        tmp = subprocess.run(["when", "--calendar=%s" % self.proxy_calendar, "--noheader", "--wrap=0"],
+                             capture_output=True, text=True, check=True).stdout
+        tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
+        self.items = [x[0] for x in tmp]
+        self.line_numbers = [int(x[1]) for x in tmp]
+        self.modified = False
+        return self.items
+
+    # Update the true calendar
+
+    def write_calendar(self):
+        if self.modified:
+            copyfile(calendar, calendar + ".SOMEDAY.BAK")
+            with open(calendar, "w") as f:
+                for line in calendar_lines:
+                    print(line, file=f)
 
 def erase(selected_item, minrow, mincol, maxrow, maxcol):
     global modified
@@ -27,6 +85,8 @@ def erase(selected_item, minrow, mincol, maxrow, maxcol):
     del items[selected_item]
     del line_numbers[selected_item]
     modified = True
+
+Action = namedtuple("Action", ["key", "name", "action"])
 
 menu = [Action("e", "Erase", erase)]
 key_bindings = {x.key: x.action for x in menu}
@@ -48,58 +108,6 @@ def expand_item(selected_item, minrow, mincol, maxrow, maxcol):
 
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True).stdout
-
-def initialize():
-    global calendar
-    global proxy_calendar
-
-    with open("%s/.when/preferences" % os.environ["HOME"]) as f:
-        prefs = f.read()
-    m = re.match(r"^\s*calendar\s*=\s*(.+)$", prefs, flags=re.MULTILINE)
-    if m is not None:
-        calendar = m.group(1).strip()
-    else:
-        sys.exit("No calendar configuration for 'when' was found.")
-    proxy_calendar = calendar + ".SOMEDAY"
-    if os.path.exists(proxy_calendar):
-        sys.exit("The calendar seems to be in edition. Delete the file %s and try again." % proxy_calendar)
-
-def cleanup():
-    os.unlink(proxy_calendar)
-
-# Copy the when's calendary to a temporary file where each non-empty line is line-numbered
-
-def generate_proxy_calendar():
-    calendar_lines.clear()
-    with open(calendar) as infile:
-        lines = infile.read().splitlines()
-    i = 0
-    with open(proxy_calendar, "w") as outfile:
-        for line in lines:
-            tmp_line = "%s-%s" % (line, i) if line.strip() else line
-            print(tmp_line, file=outfile)
-            calendar_lines.append(line)
-            i += 1
-
-# Use the temporary file created above as input for when to get a list of items along with their line numbers
-
-def get_items():
-    global items
-    global line_numbers
-
-    tmp = subprocess.run(["when", "--calendar=%s" % proxy_calendar, "--noheader", "--wrap=0"],
-                         capture_output=True, text=True, check=True).stdout
-    tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
-    items = [x[0] for x in tmp]
-    line_numbers = [int(x[1]) for x in tmp]
-
-# Rewrite the calendar
-
-def write_calendar():
-    copyfile(calendar, calendar + ".SOMEDAY.BAK")
-    with open(calendar, "w") as f:
-        for line in calendar_lines:
-            print(line, file=f)
 
 # An utility class for showing a browsable list
 
@@ -141,7 +149,7 @@ class List:
 
 # This is the main function for browsing and updating the list of items
 
-def main(stdscr):
+def main(stdscr, calendar):
 
     # Initialize curses
     curses.curs_set(0)
@@ -159,8 +167,7 @@ def main(stdscr):
     last_row = height - 3
     menu_row = height - 1
 
-    # Get the list of items
-    get_items()
+    items = calendar.get_items()
 
     # Create an onscreen list for showing the items
     item_list = List(items, stdscr, first_row, 0, last_row, width-1)
@@ -221,11 +228,13 @@ def main(stdscr):
                     key_bindings[key](selected_item, row, 0, last_row, width-1)
 
 if __name__ == "__main__":
+    calendar = Calendar()
+    # The following line will call sys.exit(...) if the proxy calendar already existed. That is why it goes uncatched, so we don't cleanup the calendar if we didn't create it
+    calendar.check_no_proxy_calendar_exists()
+    # Okay, proceed to create proxy calendar (also uncatched, so if something goes wrong while creating the proxy calendar, we don't try to delete it
+    calendar.generate_proxy_calendar()
     try:
-        initialize()
-        generate_proxy_calendar()
-        curses.wrapper(main)
-        if modified:
-            write_calendar()
+        curses.wrapper(main, calendar)
+        calendar.write_calendar()
     finally:
-        cleanup()
+        calendar.cleanup_proxy_calendar()
