@@ -98,15 +98,6 @@ class Calendar:
         self.generate_proxy_calendar()
         self._modified = True
 
-Action = namedtuple("Action", ["key", "name", "action"])
-
-def generate_menu_and_key_bindings(calendar):
-    menu = [Action("e", "Erase", calendar.erase)]
-    key_bindings = {ord(x.key): x.action for x in menu}
-    key_bindings[curses.KEY_DC] = calendar.erase
-    key_bindings[10] = calendar.expand_item
-    return menu, key_bindings
-
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True).stdout
 
@@ -160,6 +151,62 @@ class List:
     def selected_row(self):
         return self._selected_row
 
+# A singleton for showing the menu and keeping track of available actions
+
+Action = namedtuple("Action", ["key", "name", "action"])
+
+class Menu:
+
+    def __new__(cls, calendar, screen, minrow, mincol, maxrow, maxcol):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Menu, cls).__new__(cls)
+            cls.instance._initialize(calendar, screen, minrow, mincol, maxrow, maxcol)
+        return cls.instance
+
+    def _initialize(self, calendar, screen, minrow, mincol, maxrow, maxcol):
+        self._calendar = calendar
+        self._screen = screen
+        self._minrow = minrow
+        self._mincol = mincol
+        self._maxrow = maxrow
+        self._maxcol = maxcol
+        self._height = maxrow - minrow + 1
+        self._width = maxcol - mincol + 1
+        self._menu = []
+        self._key_bindings =  {}
+        self._selected_action = 0
+
+    def show(self):
+        if self._calendar.get_items():
+            self._menu = [Action("e", "Erase", self._calendar.erase)]
+            self._key_bindings = {ord(x.key): x.action for x in self._menu}
+            self._key_bindings[curses.KEY_DC] = self._calendar.erase
+            self._key_bindings[10] = self._calendar.expand_item
+        else:
+            self._menu = []
+            self._key_bindings = {}
+        for i, action in enumerate(self._menu):
+            color = 2 if i == self._selected_action else 1
+            self._screen.addstr(self._minrow, i * (self._width // len(self._menu)), action.name, curses.color_pair(color))
+
+    def dispatch_key(self, key, selected_item, minrow, mincol, maxrow, maxcol):
+        if not calendar.get_items():
+            return
+        elif key == 32:
+            action = self._menu[self._selected_action].action
+        elif key in self._key_bindings:
+            action = self._key_bindings[key]
+
+        action(selected_item, minrow, mincol, maxrow, maxcol)
+
+    def left(self):
+        if self._selected_action > 0:
+            self._selected_action -= 1
+
+    def right(self):
+        if self._selected_action < len(self._menu) - 1:
+            self._selected_action += 1
+
 # This is the main function for browsing and updating the list of items
 
 def main(stdscr, calendar):
@@ -184,10 +231,7 @@ def main(stdscr, calendar):
     item_list = List(calendar, stdscr, first_row, 0, last_row, width-1)
 
     # Generate the menu and key bindings
-    menu, key_bindings = generate_menu_and_key_bindings(calendar)
-
-    # Initialize the selected action
-    selected_action = 0
+    menu = Menu(calendar, stdscr, menu_row, 0, menu_row, width-1)
 
     # Main loop for handling key inputs
     while True:
@@ -202,9 +246,7 @@ def main(stdscr, calendar):
         item_list.show()
 
         # Draw the menu of actions
-        for i, action in enumerate(menu):
-            color = 2 if i == selected_action else 1
-            stdscr.addstr(menu_row, i * (width // len(menu)), action.name, curses.color_pair(color))
+        menu.show()
 
         stdscr.refresh()
 
@@ -216,19 +258,16 @@ def main(stdscr, calendar):
             item_list.up()
         elif key == curses.KEY_DOWN:
             item_list.down()
-        elif key == curses.KEY_LEFT and selected_action > 0:
-            selected_action -= 1
-        elif key == curses.KEY_RIGHT and selected_action < len(menu) - 1:
-            selected_action += 1
+        elif key == curses.KEY_LEFT:
+            menu.left()
+        elif key == curses.KEY_RIGHT:
+            menu.right()
         elif chr(key).lower() == 'q':
             break
-        elif not calendar.no_items():
-            row = first_row + item_list.selected_row()
+        else:
             selected_item = item_list.selected_item()
-            if key == 32:
-                menu[selected_action].action(selected_item, row, 0, last_row, width-1)
-            elif key in key_bindings:
-                key_bindings[key](selected_item, row, 0, last_row, width-1)
+            row = first_row + item_list.selected_row()
+            menu.dispatch_key(key, selected_item, row, 0, last_row, width-1)
 
 if __name__ == "__main__":
     calendar = Calendar()
