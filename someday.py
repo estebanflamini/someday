@@ -187,7 +187,8 @@ class Menu:
             self._menu = [Action("e", "Erase", self._calendar.erase),
                           Action("c", "Comment", self._calendar.comment),
                          ]
-            self._key_bindings = {ord(x.key): x.action for x in self._menu}
+            self._key_bindings = {ord(x.key.lower()): x.action for x in self._menu}
+            self._key_bindings |= {ord(x.key.upper()): x.action for x in self._menu}
             self._key_bindings[curses.KEY_DC] = self._calendar.erase
             self._key_bindings[10] = self._calendar.expand_item
         else:
