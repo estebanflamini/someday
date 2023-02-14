@@ -204,6 +204,8 @@ class Menu:
             action = self._menu[self._selected_action].action
         elif key in self._key_bindings:
             action = self._key_bindings[key]
+        else:
+            return
 
         action(selected_item, minrow, mincol, maxrow, maxcol)
 
