@@ -83,9 +83,10 @@ class Calendar:
 
     # Utilities on calendar dates
 
-    def _get_date_part(self, line_number):
-        item = self._calendar_lines[line_number]
-        m = re.match(r"^(.+?)\s*,", item)
+    def get_date_part(self, selected_item):
+        line_number = self._line_numbers[selected_item]
+        line = self._calendar_lines[line_number]
+        m = re.match(r"^(.+?)\s*,", line)
         return m.group(1).lstrip() if m else None
 
     def _parse_expression(self, text):
@@ -134,6 +135,22 @@ class Calendar:
         if len(tmp) != 3:
             return False
         return "*" not in tmp
+
+    def is_exact_date(self, text):
+        if self._is_literal(text):
+            return True
+        tmp = self._parse_expression(text)
+        if tmp is None:
+            return False
+        if len(tmp) == 3:
+            if tmp[0] == "=":
+                if tmp[1] == "j" and tmp[2].isdigit():
+                    return True
+                elif tmp[2] == "j" and tmp[1].isdigit():
+                    return True
+                else:
+                    return False
+        return False
 
     # Actions on the calendar
 
@@ -257,14 +274,15 @@ Action = namedtuple("Action", ["key", "name", "action"])
 
 class Menu:
 
-    def __new__(cls, calendar, screen, minrow, mincol, maxrow, maxcol):
+    def __new__(cls, calendar, item_list, screen, minrow, mincol, maxrow, maxcol):
         if not hasattr(cls, 'instance'):
             cls.instance = super(Menu, cls).__new__(cls)
-            cls.instance._initialize(calendar, screen, minrow, mincol, maxrow, maxcol)
+            cls.instance._initialize(calendar, item_list, screen, minrow, mincol, maxrow, maxcol)
         return cls.instance
 
-    def _initialize(self, calendar, screen, minrow, mincol, maxrow, maxcol):
+    def _initialize(self, calendar, item_list, screen, minrow, mincol, maxrow, maxcol):
         self._calendar = calendar
+        self._item_list = item_list
         self._screen = screen
         self._minrow = minrow
         self._mincol = mincol
@@ -278,13 +296,15 @@ class Menu:
 
     def show(self):
         if self._calendar.get_items():
-            self._menu = [Action("e", "Edit", calendar.edit),
-                          Action("k", "Delete", self._calendar.erase),
-                          Action("c", "Comment", self._calendar.comment),
-                         ]
-            self._key_bindings = {ord(x.key.lower()): x.action for x in self._menu}
+            date = calendar.get_date_part(self._item_list.selected_item())
+            self._menu = [Action("e", "Edit", calendar.edit)]
+            self._key_bindings = {}
+            if calendar.is_exact_date(date):
+                self._menu.append(Action("k", "Delete", self._calendar.erase))
+                self._menu.append(Action("c", "Comment", self._calendar.comment))
+                self._key_bindings[curses.KEY_DC] = self._calendar.erase
+            self._key_bindings |= {ord(x.key.lower()): x.action for x in self._menu}
             self._key_bindings |= {ord(x.key.upper()): x.action for x in self._menu}
-            self._key_bindings[curses.KEY_DC] = self._calendar.erase
             self._key_bindings[10] = self._calendar.expand_item
         else:
             self._menu = []
@@ -341,7 +361,7 @@ def main(stdscr, calendar):
     item_list = List(calendar, stdscr, first_row, 0, last_row, width-1)
 
     # Generate the menu and key bindings
-    menu = Menu(calendar, stdscr, menu_row, 0, menu_row, width-1)
+    menu = Menu(calendar, item_list, stdscr, menu_row, 0, menu_row, width-1)
 
     # Main loop for handling key inputs
     while True:
