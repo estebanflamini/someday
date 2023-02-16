@@ -78,6 +78,57 @@ class Calendar:
                 for line in self._calendar_lines:
                     print(line, file=f)
 
+    # Utilities on calendar dates
+
+    def _get_date_part(self, line_number):
+        item = self._calendar_lines[line_number]
+        m = re.match(r"^(.+?)\s*,", item)
+        return m.group(1).lstrip() if m else None
+
+    def _parse_expression(self, text):
+        # Invalid expressions such as 'xx = #$$%' will get parsed by this
+        # method, but we can assume that any string which is passed to this
+        # method comes from a valid calendar containing only valid expressions
+        text = text.strip()
+        if not self._wellnested(text):
+            return None
+        if text[0] == "(" and text[-1] == ")":
+            return self._parse_expression(text[1:-1])
+        # Parse operators in reversed order of precedence
+        for op in ["|", "&", "!", "=", "!=", "<", ">", "<=", ">=", "-", "%"]:
+            if op in text:
+                n = text.index(op)
+                tmp1 = self._parse_expression(text[0:n])
+                tmp2 = self._parse_expression(text[n+1:])
+                if tmp1 and tmp2:
+                    return [op, tmp1, tmp2]
+        return text if not " " in text else None
+
+    def _wellnested(self, text):
+        # Some invalid expressions, such as ()j = 1, will pass this test, but
+        # we can assume that any string which is passed to this method comes
+        # from a valid calendar containing only valid expressions
+        n = 0
+        for ch in text:
+            if n < 0:
+                return False
+            elif ch == "(":
+                n += 1
+            elif ch == ")":
+                n -= 1
+        return n == 0
+
+    def _is_literal(self, text):
+        # Actually, bogus strings such as 'bla bla bla' will pass this test,
+        # but we can assume that any string which is passed to this method
+        # comes from a valid calendar containing only valid day and month names
+        if self._parse_expression(text) is not None:
+            return False
+        tmp = text.split()
+        if len(tmp) != 3:
+            return False
+        return "*" not in tmp
+
     # Actions on the calendar
 
     def expand_item(self, selected_item, minrow, mincol, maxrow, maxcol):
