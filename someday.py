@@ -95,11 +95,14 @@ class Calendar:
         text = text.strip()
         if not self._wellnested(text):
             return None
-        if text[0] == "(" and text[-1] == ")":
+        if len(text) > 2 and text[0] == "(" and text[-1] == ")":
             return self._parse_expression(text[1:-1])
         # Parse operators in reversed order of precedence
         for op in ["|", "&", "!", "=", "!=", "<", ">", "<=", ">=", "-", "%"]:
             if op in text:
+                if op == "!":
+                    tmp = self._parse_expression(text[1:])
+                    return [op, tmp] if tmp else None
                 n = text.index(op)
                 tmp1 = self._parse_expression(text[0:n])
                 tmp2 = self._parse_expression(text[n+1:])
