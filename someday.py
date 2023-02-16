@@ -193,7 +193,10 @@ class Calendar:
         self._modified = True
 
 def get_date():
-    return subprocess.run(["when", "d"], capture_output=True).stdout
+    return subprocess.run(["when", "d"], capture_output=True, text=True).stdout
+
+def get_julian_date():
+    return subprocess.run(["when", "j"], capture_output=True, text=True).stdout
 
 # A singleton for browsing the calendar's items
 
@@ -327,7 +330,7 @@ def main(stdscr, calendar):
 
     # Get the size of the window and define areas for the list of items and menu
     height, width = stdscr.getmaxyx()
-    first_row = 2
+    first_row = 3
     last_row = height - 3
     menu_row = height - 1
 
@@ -345,6 +348,7 @@ def main(stdscr, calendar):
         # Show the date at top of the screen
 
         stdscr.addstr(0, 0, get_date())
+        stdscr.addstr(1, 0, get_julian_date())
 
         # Draw the list of items
         item_list.show()
