@@ -9,6 +9,9 @@ import sys
 from collections import namedtuple
 from shutil import copyfile
 import argparse
+import termios
+import readline
+import signal
 
 # A singleton for interacting with the calendar
 
@@ -131,7 +134,7 @@ class Calendar:
 
     # Actions on the calendar
 
-    def expand_item(self, selected_item, minrow, mincol, maxrow, maxcol):
+    def expand_item(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         minrow -= 1
         width = maxcol - mincol + 1
         item = self._items[selected_item]
@@ -145,13 +148,45 @@ class Calendar:
         pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
         pad.getch()
 
-    def erase(self, selected_item, minrow, mincol, maxrow, maxcol):
+    def edit(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+        screen.clear()
+        screen.refresh()
+        run_outside_curses(lambda: self._edit(selected_item))
+
+    def _edit(self, selected_item):
+        line_number = self._line_numbers[selected_item]
+        line = self._calendar_lines[line_number]
+        readline.clear_history()
+        readline.add_history(line)
+        _input = line
+        _old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        while True:
+            readline.set_startup_hook(lambda: readline.insert_text(_input))
+            _input = input()
+            readline.set_startup_hook()
+            if _input == line:
+                break
+            else:
+                self._calendar_lines[line_number] = _input
+                try:
+                    self.generate_proxy_calendar()
+                    self._modified = True
+                    break
+                except Exception as e:
+                    print()
+                    print("It looks you entered a wrong calendar line. Try it "
+                          "again. To leave the item unchanged, use the cursor "
+                          "up key to get the original line and press Enter.")
+                    print()
+        signal.signal(signal.SIGINT, _old_handler)
+
+    def erase(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         line_number = self._line_numbers[selected_item]
         del self._calendar_lines[line_number]
         self.generate_proxy_calendar()
         self._modified = True
 
-    def comment(self, selected_item, minrow, mincol, maxrow, maxcol):
+    def comment(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         line_number = self._line_numbers[selected_item]
         self._calendar_lines[line_number] = '#' + self._calendar_lines[line_number]
         self.generate_proxy_calendar()
@@ -237,7 +272,8 @@ class Menu:
 
     def show(self):
         if self._calendar.get_items():
-            self._menu = [Action("e", "Erase", self._calendar.erase),
+            self._menu = [Action("e", "Edit", calendar.edit),
+                          Action("k", "Delete", self._calendar.erase),
                           Action("c", "Comment", self._calendar.comment),
                          ]
             self._key_bindings = {ord(x.key.lower()): x.action for x in self._menu}
@@ -261,7 +297,7 @@ class Menu:
         else:
             return
 
-        action(selected_item, minrow, mincol, maxrow, maxcol)
+        action(self._screen, selected_item, minrow, mincol, maxrow, maxcol)
 
     def left(self):
         if self._selected_action > 0:
@@ -274,9 +310,11 @@ class Menu:
 # This is the main function for browsing and updating the list of items
 
 def main(stdscr, calendar):
+    global _prog_tty_settings
+    global _shell_cursor
 
     # Initialize curses
-    curses.curs_set(0)
+    _shell_cursor = curses.curs_set(0)
 
     curses.use_default_colors()
     curses.init_pair(1, -1, -1)
@@ -284,6 +322,8 @@ def main(stdscr, calendar):
 
     # Have curses interpret special input
     stdscr.keypad(True)
+
+    _prog_tty_settings = termios.tcgetattr(sys.stdin.fileno())
 
     # Get the size of the window and define areas for the list of items and menu
     height, width = stdscr.getmaxyx()
@@ -339,6 +379,13 @@ def get_args():
     parser.add_argument("--future", type=int, default=14)
     return parser.parse_args()
 
+def run_outside_curses(func):
+    termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _shell_tty_settings)
+    curses.curs_set(_shell_cursor)
+    func()
+    termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
+    curses.curs_set(0)
+
 if __name__ == "__main__":
     args = get_args()
     calendar = Calendar()
@@ -346,6 +393,7 @@ if __name__ == "__main__":
     calendar.check_no_proxy_calendar_exists()
     # Okay, proceed to create proxy calendar (also uncatched, so if something goes wrong while creating the proxy calendar, we don't try to delete it
     calendar.generate_proxy_calendar()
+    _shell_tty_settings = termios.tcgetattr(sys.stdin.fileno())
     try:
         curses.wrapper(main, calendar)
         calendar.write_calendar()
