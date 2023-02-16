@@ -8,6 +8,7 @@ import re
 import sys
 from collections import namedtuple
 from shutil import copyfile
+import argparse
 
 # A singleton for interacting with the calendar
 
@@ -55,7 +56,8 @@ class Calendar:
                 print(tmp_line, file=outfile)
                 i += 1
 
-        tmp = subprocess.run(["when", "--calendar=%s" % self._proxy_calendar, "--noheader", "--wrap=0"],
+        tmp = subprocess.run(["when", "--calendar=%s" % self._proxy_calendar, "--noheader", "--wrap=0",
+                              "--past=%s" % args.past, "--future=%s" % args.future],
                              capture_output=True, text=True, check=True).stdout
         tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
         self._items = [x[0] for x in tmp]
@@ -280,7 +282,14 @@ def main(stdscr, calendar):
             row = first_row + item_list.selected_row()
             menu.dispatch_key(key, selected_item, row, 0, last_row, width-1)
 
+def get_args():
+    parser = argparse.ArgumentParser(prog="someday")
+    parser.add_argument("--past", type=int, default=-1)
+    parser.add_argument("--future", type=int, default=14)
+    return parser.parse_args()
+
 if __name__ == "__main__":
+    args = get_args()
     calendar = Calendar()
     # The following line will call sys.exit(...) if the proxy calendar already existed. That is why it goes uncatched, so we don't cleanup the calendar if we didn't create it
     calendar.check_no_proxy_calendar_exists()
