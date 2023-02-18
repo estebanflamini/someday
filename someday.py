@@ -474,6 +474,7 @@ if __name__ == "__main__":
     calendar = Calendar()
     # The following line will call sys.exit(...) if the proxy calendar already existed. That is why it goes uncatched, so we don't cleanup the calendar if we didn't create it
     calendar.check_no_proxy_calendar_exists()
+    _shell_tty_settings = termios.tcgetattr(sys.stdin.fileno())
     try:
         calendar.generate_proxy_calendar()
         curses.wrapper(main, calendar)
