@@ -197,13 +197,13 @@ class Calendar:
                     print()
         signal.signal(signal.SIGINT, _old_handler)
 
-    def erase(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+    def delete(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         line_number = self._line_numbers[selected_item]
         del self._calendar_lines[line_number]
         self.generate_proxy_calendar()
         self._modified = True
 
-    def can_erase(self, selected_item):
+    def can_delete(self, selected_item):
         return self._is_exact_date(selected_item)
 
     def comment(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
@@ -290,9 +290,9 @@ class Menu:
         if self._calendar.get_items():
             selected_item = self._item_list.selected_item()
             self._menu.append(Action("e", "Edit", calendar.edit))
-            if calendar.can_erase(selected_item):
-                self._menu.append(Action("k", "Delete", self._calendar.erase))
-                self._key_bindings[curses.KEY_DC] = self._calendar.erase
+            if calendar.can_delete(selected_item):
+                self._menu.append(Action("d", "Done (delete)", self._calendar.delete))
+                self._key_bindings[curses.KEY_DC] = self._calendar.delete
             if calendar.can_comment(selected_item):
                 self._menu.append(Action("c", "Comment", self._calendar.comment))
             self._key_bindings |= {ord(x.key.lower()): x.action for x in self._menu}
