@@ -13,22 +13,16 @@ import termios
 import readline
 import signal
 
-# A singleton for interacting with the calendar
+# A class for interacting with the calendar
 
 class Calendar:
-    def __new__(cls):
-        if not hasattr(cls, 'instance'):
-            cls.instance = super(Calendar, cls).__new__(cls)
-            cls.instance._initialize()
-        return cls.instance
-
-    def _initialize(self):
-        with open("%s/.when/preferences" % os.environ["HOME"]) as f:
-            prefs = f.read()
-        m = re.match(r"^\s*calendar\s*=\s*(.+)$", prefs, flags=re.MULTILINE)
-        if m is not None:
+    def __init__(self):
+        try:
+            with open("%s/.when/preferences" % os.environ["HOME"]) as f:
+                prefs = f.read()
+            m = re.match(r"^\s*calendar\s*=\s*(.+)$", prefs, flags=re.MULTILINE)
             self._calendar = m.group(1).strip()
-        else:
+        except Exception:
             sys.exit("No calendar configuration for 'when' was found.")
 
 # TODO: Eliminar esta línea cuando ya estés seguro de que anda bien
