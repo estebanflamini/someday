@@ -256,19 +256,12 @@ class List:
     def selected_row(self):
         return self._selected_row
 
-# A singleton for showing the menu and keeping track of available actions
+# A class for showing the menu and keeping track of available actions
 
 Action = namedtuple("Action", ["key", "name", "action"])
 
 class Menu:
-
-    def __new__(cls, calendar, item_list, screen, minrow, mincol, maxrow, maxcol):
-        if not hasattr(cls, 'instance'):
-            cls.instance = super(Menu, cls).__new__(cls)
-            cls.instance._initialize(calendar, item_list, screen, minrow, mincol, maxrow, maxcol)
-        return cls.instance
-
-    def _initialize(self, calendar, item_list, screen, minrow, mincol, maxrow, maxcol):
+    def __init__(self, calendar, item_list, screen, minrow, mincol, maxrow, maxcol):
         self._calendar = calendar
         self._item_list = item_list
         self._screen = screen
