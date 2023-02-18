@@ -56,6 +56,8 @@ class Calendar:
         tmp = subprocess.run(["when", "--calendar=%s" % self._proxy_calendar, "--noheader", "--wrap=0",
                               "--past=%s" % args.past, "--future=%s" % args.future],
                              capture_output=True, text=True, check=True).stdout
+        if tmp.startswith("*"):
+            raise Exception("Invalid expression in calendar.")
         tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
         self._items = [x[0] for x in tmp]
         self._line_numbers = [int(x[1]) for x in tmp]
@@ -75,13 +77,19 @@ class Calendar:
                 for line in self._calendar_lines:
                     print(line, file=f)
 
-    # Utilities on calendar dates
+    # Utilities on calendar entries
 
     def _get_date_part(self, selected_item):
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
         m = re.match(r"^(.+?)\s*,", line)
         return m.group(1).lstrip() if m else None
+
+    def _get_event_part(self, selected_item):
+        line_number = self._line_numbers[selected_item]
+        line = self._calendar_lines[line_number]
+        m = re.search(r",\s*(.+?)$", line)
+        return m.group(1).rstrip() if m else None
 
     def _is_exact_date(self, selected_item):
         date = self._get_date_part(selected_item)
@@ -190,6 +198,7 @@ class Calendar:
                     self._modified = True
                     break
                 except Exception as e:
+                    self._calendar_lines[line_number] = line
                     print()
                     print("It looks you entered a wrong calendar line. Try it "
                           "again. To leave the item unchanged, use the cursor "
@@ -214,6 +223,59 @@ class Calendar:
 
     def can_comment(self, selected_item):
         return self._is_exact_date(selected_item)
+
+    def reschedule(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+        screen.clear()
+        screen.refresh()
+        run_outside_curses(lambda: self._reschedule(selected_item))
+
+    def can_reschedule(self, selected_item):
+        return self._is_exact_date(selected_item)
+
+    # TODO abstract code away with _edit
+    def _reschedule(self, selected_item):
+        print("Enter a date as YYYY MM DD or a number to indicate an interval from now.")
+        print()
+        date = self._get_date_part(selected_item)
+        what = self._get_event_part(selected_item)
+        readline.clear_history()
+        _input = ""
+        _old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        line_number = self._line_numbers[selected_item]
+        line = self._calendar_lines[line_number]
+        while True:
+            print("Enter a blank line to leave the date unchanged.")
+            print()
+            print(what)
+            print()
+            readline.set_startup_hook(lambda: readline.insert_text(_input))
+            _input = input().strip()
+            readline.set_startup_hook()
+            if not _input:
+                break
+            else:
+                if _input.isdigit():
+                    julian_date = get_julian_date()
+                    m = re.search(r"(x\d{5})\.$", julian_date)
+                    if m is None:
+                        print("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
+                        continue
+                    today = int(m.group(1))
+                    date = "j = %s" % (today + int(_input))
+                else:
+                    date = _input
+                self._calendar_lines[line_number] = "%s , %s" % (date, what)
+                try:
+                    self.generate_proxy_calendar()
+                    self._modified = True
+                    break
+                except Exception as e:
+                    self._calendar_lines[line_number] = line
+                    print()
+                    print("It looks you entered a wrong date. Try it again.")
+                    print()
+        signal.signal(signal.SIGINT, _old_handler)
+
 
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True, text=True).stdout
@@ -293,6 +355,8 @@ class Menu:
             if calendar.can_delete(selected_item):
                 self._menu.append(Action("d", "Done (delete)", self._calendar.delete))
                 self._key_bindings[curses.KEY_DC] = self._calendar.delete
+            if calendar.can_reschedule(selected_item):
+                self._menu.append(Action("r", "Reschedule", self._calendar.reschedule))
             if calendar.can_comment(selected_item):
                 self._menu.append(Action("c", "Comment", self._calendar.comment))
             self._key_bindings |= {ord(x.key.lower()): x.action for x in self._menu}
