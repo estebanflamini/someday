@@ -159,7 +159,7 @@ class Calendar:
 
     # Actions on the calendar
 
-    def expand_item(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+    def expand(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         minrow -= 1
         width = maxcol - mincol + 1
         item = self._items[selected_item]
@@ -361,7 +361,7 @@ class Menu:
                 self._menu.append(Action("c", "Comment", self._calendar.comment))
             self._key_bindings |= {ord(x.key.lower()): x.action for x in self._menu}
             self._key_bindings |= {ord(x.key.upper()): x.action for x in self._menu}
-            self._key_bindings[10] = self._calendar.expand_item
+            self._key_bindings[10] = self._calendar.expand
         else:
             self._menu = []
             self._key_bindings = {}
