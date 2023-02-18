@@ -77,11 +77,41 @@ class Calendar:
 
     # Utilities on calendar dates
 
-    def get_date_part(self, selected_item):
+    def _get_date_part(self, selected_item):
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
         m = re.match(r"^(.+?)\s*,", line)
         return m.group(1).lstrip() if m else None
+
+    def _is_exact_date(self, selected_item):
+        date = self._get_date_part(selected_item)
+        if date is None: # just in case
+            return False
+        if self._is_literal(date):
+            return True
+        tmp = self._parse_expression(date)
+        if tmp is None:
+            return False
+        if len(tmp) == 3:
+            if tmp[0] == "=":
+                if tmp[1] == "j" and tmp[2].isdigit():
+                    return True
+                elif tmp[2] == "j" and tmp[1].isdigit():
+                    return True
+                else:
+                    return False
+        return False
+
+    def _is_literal(self, text):
+        # Actually, bogus strings such as 'bla bla bla' will pass this test,
+        # but we can assume that any string which is passed to this method
+        # comes from a valid calendar containing only valid day and month names
+        if self._parse_expression(text) is not None:
+            return False
+        tmp = text.split()
+        if len(tmp) != 3:
+            return False
+        return "*" not in tmp
 
     def _parse_expression(self, text):
         # Invalid expressions such as 'xx = #$$%' will get parsed by this
@@ -118,33 +148,6 @@ class Calendar:
             elif ch == ")":
                 n -= 1
         return n == 0
-
-    def _is_literal(self, text):
-        # Actually, bogus strings such as 'bla bla bla' will pass this test,
-        # but we can assume that any string which is passed to this method
-        # comes from a valid calendar containing only valid day and month names
-        if self._parse_expression(text) is not None:
-            return False
-        tmp = text.split()
-        if len(tmp) != 3:
-            return False
-        return "*" not in tmp
-
-    def is_exact_date(self, text):
-        if self._is_literal(text):
-            return True
-        tmp = self._parse_expression(text)
-        if tmp is None:
-            return False
-        if len(tmp) == 3:
-            if tmp[0] == "=":
-                if tmp[1] == "j" and tmp[2].isdigit():
-                    return True
-                elif tmp[2] == "j" and tmp[1].isdigit():
-                    return True
-                else:
-                    return False
-        return False
 
     # Actions on the calendar
 
@@ -200,11 +203,17 @@ class Calendar:
         self.generate_proxy_calendar()
         self._modified = True
 
+    def can_erase(self, selected_item):
+        return self._is_exact_date(selected_item)
+
     def comment(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         line_number = self._line_numbers[selected_item]
         self._calendar_lines[line_number] = '#' + self._calendar_lines[line_number]
         self.generate_proxy_calendar()
         self._modified = True
+
+    def can_comment(self, selected_item):
+        return self._is_exact_date(selected_item)
 
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True, text=True).stdout
@@ -276,14 +285,16 @@ class Menu:
         self._selected_action = 0
 
     def show(self):
+        self._menu = []
+        self._key_bindings = {}
         if self._calendar.get_items():
-            date = calendar.get_date_part(self._item_list.selected_item())
-            self._menu = [Action("e", "Edit", calendar.edit)]
-            self._key_bindings = {}
-            if calendar.is_exact_date(date):
+            selected_item = self._item_list.selected_item()
+            self._menu.append(Action("e", "Edit", calendar.edit))
+            if calendar.can_erase(selected_item):
                 self._menu.append(Action("k", "Delete", self._calendar.erase))
-                self._menu.append(Action("c", "Comment", self._calendar.comment))
                 self._key_bindings[curses.KEY_DC] = self._calendar.erase
+            if calendar.can_comment(selected_item):
+                self._menu.append(Action("c", "Comment", self._calendar.comment))
             self._key_bindings |= {ord(x.key.lower()): x.action for x in self._menu}
             self._key_bindings |= {ord(x.key.upper()): x.action for x in self._menu}
             self._key_bindings[10] = self._calendar.expand_item
