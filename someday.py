@@ -157,6 +157,23 @@ class Calendar:
                 n -= 1
         return n == 0
 
+    def _is_advanceable(self, selected_item):
+        date = self._get_date_part(selected_item)
+        if len(re.findall(r"\bj\b", date)) != 1:
+            return False
+        tmp = self._parse_expression(date)
+        if tmp is None:
+            return False
+        return self._search_j(tmp)
+
+    def _search_j(self, expr):
+        if len(expr) == 3 and expr[0] == ">" and expr[1] == "j" and expr[2].isdigit():
+            return True
+        elif expr[0] == "&":
+            return self._search_j(expr[1]) or self._search_j(expr[2])
+        else:
+            return False
+
     # Actions on the calendar
 
     def expand(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
@@ -256,8 +273,7 @@ class Calendar:
             else:
                 if _input.isdigit():
                     julian_date = get_julian_date()
-                    m = re.search(r"(x\d{5})\.$", julian_date)
-                    if m is None:
+                    if not julian_date:
                         print("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
                         continue
                     today = int(m.group(1))
@@ -276,12 +292,37 @@ class Calendar:
                     print()
         signal.signal(signal.SIGINT, _old_handler)
 
+    JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
+
+    def advance(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+        line_number = self._line_numbers[selected_item]
+        line = self._calendar_lines[line_number]
+        today = get_julian_date()
+        self._calendar_lines[line_number] = re.sub(self.JULIAN_THRESHOLD, "j>%s" % today, line)
+        self.generate_proxy_calendar()
+        self._modified = True
+
+    DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
+
+    def can_advance(self, selected_item):
+        if self._is_advanceable(selected_item):
+            m = re.match(self.DATE_IN_LISTING, self._items[selected_item])
+            if m is None:
+                return False
+            return get_julian_date(m.group(1)) <= get_julian_date()
 
 def get_date():
-    return subprocess.run(["when", "d"], capture_output=True, text=True).stdout
+    return subprocess.run(["when", "d"], capture_output=True, text=True).stdout.strip()
 
-def get_julian_date():
-    return subprocess.run(["when", "j"], capture_output=True, text=True).stdout
+def get_julian_date(now=None):
+    d = ["when", "j"]
+    if now is not None:
+        # The date is not surrounded by ', because no shell processing will be
+        # done and we must pass the string as it will be received  by when
+        d.append("--now=%s" % now)
+    tmp = subprocess.run(d, capture_output=True, text=True).stdout.strip()
+    m = re.search(r"(\d{5})\.$", tmp)
+    return int(m.group(1)) if m else None
 
 # A class for browsing the calendar's items
 
@@ -359,6 +400,8 @@ class Menu:
                 self._menu.append(Action("r", "Reschedule", self._calendar.reschedule))
             if calendar.can_comment(selected_item):
                 self._menu.append(Action("c", "Comment", self._calendar.comment))
+            if calendar.can_advance(selected_item):
+                self._menu.append(Action("a", "Advance", self._calendar.advance))
             self._key_bindings |= {ord(x.key.lower()): x.action for x in self._menu}
             self._key_bindings |= {ord(x.key.upper()): x.action for x in self._menu}
             self._key_bindings[10] = self._calendar.expand
@@ -409,7 +452,7 @@ def main(stdscr, calendar):
 
     # Get the size of the window and define areas for the list of items and menu
     height, width = stdscr.getmaxyx()
-    first_row = 3
+    first_row = 2
     last_row = height - 3
     menu_row = height - 1
 
@@ -426,8 +469,7 @@ def main(stdscr, calendar):
 
         # Show the date at top of the screen
 
-        stdscr.addstr(0, 0, get_date())
-        stdscr.addstr(1, 0, get_julian_date())
+        stdscr.addstr(0, 0, "%s - Julian date: %s" % (get_date(), get_julian_date()))
 
         # Draw the list of items
         item_list.show()
