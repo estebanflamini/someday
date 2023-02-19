@@ -209,13 +209,9 @@ class Calendar:
             if _input == line:
                 break
             else:
-                self._calendar_lines[line_number] = _input
-                try:
-                    self.generate_proxy_calendar()
-                    self._modified = True
+                if self._update_calendar_line(line_number, _input):
                     break
-                except Exception as e:
-                    self._calendar_lines[line_number] = line
+                else:
                     print()
                     print("It looks you entered a wrong calendar line. Try it "
                           "again. To leave the item unchanged, use the cursor "
@@ -310,6 +306,17 @@ class Calendar:
             if m is None:
                 return False
             return get_julian_date(m.group(1)) <= get_julian_date()
+
+    def _update_calendar_line(self, line_number, what):
+        old_value = self._calendar_lines[line_number]
+        self._calendar_lines[line_number] = what
+        try:
+            self.generate_proxy_calendar()
+            self._modified = True
+            return True
+        except Exception:
+            self._calendar_lines[line_number] = old_value
+            return False
 
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True, text=True).stdout.strip()
