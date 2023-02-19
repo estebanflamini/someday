@@ -221,9 +221,7 @@ class Calendar:
 
     def delete(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         line_number = self._line_numbers[selected_item]
-        del self._calendar_lines[line_number]
-        self.generate_proxy_calendar()
-        self._modified = True
+        self._update_calendar_line(line_number, None)
 
     def can_delete(self, selected_item):
         return self._is_exact_date(selected_item)
@@ -309,13 +307,19 @@ class Calendar:
 
     def _update_calendar_line(self, line_number, what):
         old_value = self._calendar_lines[line_number]
-        self._calendar_lines[line_number] = what
+        if what is not None:
+            self._calendar_lines[line_number] = what
+        else:
+            del self._calendar_lines[line_number]
         try:
             self.generate_proxy_calendar()
             self._modified = True
             return True
         except Exception:
-            self._calendar_lines[line_number] = old_value
+            if what is not None:
+                self._calendar_lines[line_number] = old_value
+            else:
+                self._calendar_lines.insert(line_number, old_value)
             return False
 
 def get_date():
