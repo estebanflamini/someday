@@ -316,7 +316,11 @@ class Calendar:
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True, text=True).stdout.strip()
 
+_julian_dates = {}
+
 def get_julian_date(now=None):
+    if now in _julian_dates:
+        return _julian_dates[now]
     d = ["when", "j"]
     if now is not None:
         # The date is not surrounded by ', because no shell processing will be
@@ -324,7 +328,11 @@ def get_julian_date(now=None):
         d.append("--now=%s" % now)
     tmp = subprocess.run(d, capture_output=True, text=True).stdout.strip()
     m = re.search(r"(\d{5})\.$", tmp)
-    return int(m.group(1)) if m else None
+    if m:
+        j = int(m.group(1))
+        _julian_dates[now] = j
+        return j
+    return None
 
 # A class for browsing the calendar's items
 
