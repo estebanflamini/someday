@@ -269,7 +269,14 @@ class Calendar:
                     if not today:
                         print("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
                         continue
-                    date = "j = %s" % (today + int(_input))
+                    if args.useYMD:
+                        try:
+                            date = subprocess.run(["date", "--date", "%s days" % int(_input), "+%Y %m %d"], capture_output=True, text=True, check=True).stdout.strip()
+                        except Exception:
+                            print("There was an error while trying to compute the new date. Enter an exact date instead of an interval.")
+                            continue
+                    else:
+                        date = "j=%s" % (today + int(_input))
                 else:
                     date = _input
                 if self._update_calendar_line(line_number, "%s , %s" % (date, what)):
@@ -524,6 +531,7 @@ def get_args():
     parser = argparse.ArgumentParser(prog="someday")
     parser.add_argument("--past", type=int, default=None)
     parser.add_argument("--future", type=int, default=None)
+    parser.add_argument("--useYMD", action='store_true', default=False)
     return parser.parse_args()
 
 def run_outside_curses(func):
