@@ -310,6 +310,17 @@ class Calendar:
                 self._calendar_lines.insert(line_number, old_value)
             return False
 
+    URL = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
+
+    def open_url(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+        m = re.search("(%s)" % self.URL, self._items[selected_item])
+        if m is not None:
+            url = m.group(1)
+            subprocess.run(["xdg-open", url])
+
+    def can_open_url(self, selected_item):
+        return re.search("(%s)" % self.URL, self._items[selected_item]) is not None
+
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True, text=True).stdout.strip()
 
@@ -407,6 +418,8 @@ class Menu:
                 self._menu.append(Action("c", "Comment", self._calendar.comment))
             if calendar.can_advance(selected_item):
                 self._menu.append(Action("a", "Advance", self._calendar.advance))
+            if calendar.can_open_url(selected_item):
+                self._menu.append(Action("b", "Browse url", self._calendar.open_url))
             self._key_bindings |= {ord(x.key.lower()): x.action for x in self._menu}
             self._key_bindings |= {ord(x.key.upper()): x.action for x in self._menu}
             self._key_bindings[10] = self._calendar.expand
