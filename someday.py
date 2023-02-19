@@ -324,15 +324,13 @@ def get_julian_date(now=None):
     d = ["when", "j"]
     if now is not None:
         # The date is not surrounded by ', because no shell processing will be
-        # done and we must pass the string as it will be received  by when
+        # done and we must pass the string as it will be received by when
         d.append("--now=%s" % now)
     tmp = subprocess.run(d, capture_output=True, text=True).stdout.strip()
     m = re.search(r"(\d{5})\.$", tmp)
-    if m:
-        j = int(m.group(1))
-        _julian_dates[now] = j
-        return j
-    return None
+    j = int(m.group(1)) if m else None
+    _julian_dates[now] = j
+    return j
 
 # A class for browsing the calendar's items
 
