@@ -285,9 +285,7 @@ class Calendar:
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
         today = get_julian_date()
-        self._calendar_lines[line_number] = re.sub(self.JULIAN_THRESHOLD, "j>%s" % today, line)
-        self.generate_proxy_calendar()
-        self._modified = True
+        self._update_calendar_line(line_number, re.sub(self.JULIAN_THRESHOLD, "j>%s" % today, line))
 
     DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
 
