@@ -228,9 +228,7 @@ class Calendar:
 
     def comment(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         line_number = self._line_numbers[selected_item]
-        self._calendar_lines[line_number] = '#' + self._calendar_lines[line_number]
-        self.generate_proxy_calendar()
-        self._modified = True
+        self._update_calendar_line(line_number, '#' + self._calendar_lines[line_number])
 
     def can_comment(self, selected_item):
         return self._is_exact_date(selected_item)
