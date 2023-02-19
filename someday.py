@@ -25,9 +25,6 @@ class Calendar:
         except Exception:
             sys.exit("No calendar configuration for 'when' was found.")
 
-# TODO: Eliminar esta línea cuando ya estés seguro de que anda bien
-        self._calendar = "%s/prog/someday/calendar" % os.environ["HOME"]
-
         self._proxy_calendar = self._calendar + ".SOMEDAY"
 
         with open(self._calendar) as infile:
