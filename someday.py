@@ -50,9 +50,13 @@ class Calendar:
                 print(tmp_line, file=outfile)
                 i += 1
 
-        tmp = subprocess.run(["when", "--calendar=%s" % self._proxy_calendar, "--noheader", "--wrap=0",
-                              "--past=%s" % args.past, "--future=%s" % args.future],
-                             capture_output=True, text=True, check=True).stdout
+        d = ["when", "--calendar=%s" % self._proxy_calendar, "--noheader", "--wrap=0"]
+        if args.past is not None:
+            d.append("--past=%s" % args.past)
+        if args.future is not None:
+            d.append("--future=%s" % args.future)
+
+        tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout
         if tmp.startswith("*"):
             raise Exception("Invalid expression in calendar.")
         tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
@@ -518,8 +522,8 @@ def main(stdscr, calendar):
 
 def get_args():
     parser = argparse.ArgumentParser(prog="someday")
-    parser.add_argument("--past", type=int, default=-1)
-    parser.add_argument("--future", type=int, default=14)
+    parser.add_argument("--past", type=int, default=None)
+    parser.add_argument("--future", type=int, default=None)
     return parser.parse_args()
 
 def run_outside_curses(func):
