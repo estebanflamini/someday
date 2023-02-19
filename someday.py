@@ -264,21 +264,16 @@ class Calendar:
                 break
             else:
                 if _input.isdigit():
-                    julian_date = get_julian_date()
-                    if not julian_date:
+                    today = get_julian_date()
+                    if not today:
                         print("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
                         continue
-                    today = int(m.group(1))
                     date = "j = %s" % (today + int(_input))
                 else:
                     date = _input
-                self._calendar_lines[line_number] = "%s , %s" % (date, what)
-                try:
-                    self.generate_proxy_calendar()
-                    self._modified = True
+                if self._update_calendar_line(line_number, "%s , %s" % (date, what)):
                     break
-                except Exception as e:
-                    self._calendar_lines[line_number] = line
+                else:
                     print()
                     print("It looks you entered a wrong date. Try it again.")
                     print()
