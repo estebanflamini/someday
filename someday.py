@@ -368,6 +368,7 @@ class List:
     def show(self):
         self._items = calendar.get_items()
         if self._items:
+            self._adjust_selected_item()
             for i, item in enumerate(self._items[self._first_item:]):
                 if i >= self._height:
                     break
@@ -375,6 +376,10 @@ class List:
                 self._screen.addstr(self._minrow + i, self._mincol, item[:self._width], curses.color_pair(color))
         else:
             self._screen.addstr(self._minrow, self._mincol, "No items were found for today (and surrounding dates).")
+
+    def _adjust_selected_item(self):
+        while self._first_item + self._selected_row >= len(self._items):
+            self.up()
 
     def up(self):
         if self._selected_row > 0:
@@ -390,9 +395,11 @@ class List:
             self._first_item += 1
 
     def selected_item(self):
+        self._adjust_selected_item()
         return self._first_item + self._selected_row
 
     def selected_row(self):
+        self._adjust_selected_item()
         return self._selected_row
 
 # A class for showing the menu and keeping track of available actions
