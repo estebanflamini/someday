@@ -177,20 +177,6 @@ class Calendar:
 
     # Actions on the calendar
 
-    def expand(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
-        minrow -= 1
-        width = maxcol - mincol + 1
-        item = self._items[selected_item]
-        lines = textwrap.wrap(item, width-2)
-        height = len(lines) + 2
-        pad = curses.newpad(height, width)
-        pad.border()
-        for i, line in enumerate(lines):
-            pad.addstr(i+1, 1, line)
-        minrow = min(minrow, maxrow - height + 1)
-        pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
-        pad.getch()
-
     def edit(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         screen.clear()
         screen.refresh()
@@ -402,6 +388,20 @@ class List:
         self._adjust_selected_item()
         return self._selected_row
 
+    def expand(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+        minrow -= 1
+        width = maxcol - mincol + 1
+        item = self._items[selected_item]
+        lines = textwrap.wrap(item, width-2)
+        height = len(lines) + 2
+        pad = curses.newpad(height, width)
+        pad.border()
+        for i, line in enumerate(lines):
+            pad.addstr(i+1, 1, line)
+        minrow = min(minrow, maxrow - height + 1)
+        pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
+        pad.getch()
+
 # A class for showing the menu and keeping track of available actions
 
 Action = namedtuple("Action", ["key", "name", "action"])
@@ -440,7 +440,7 @@ class Menu:
                 self._menu.append(Action("b", "Browse url", self._calendar.open_url))
             self._key_bindings |= {ord(x.key.lower()): x.action for x in self._menu}
             self._key_bindings |= {ord(x.key.upper()): x.action for x in self._menu}
-            self._key_bindings[10] = self._calendar.expand
+            self._key_bindings[10] = self._item_list.expand
         else:
             self._menu = []
             self._key_bindings = {}
