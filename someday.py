@@ -178,33 +178,22 @@ class Calendar:
     # Actions on the calendar
 
     def edit(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
-        screen.clear()
-        screen.refresh()
-        run_outside_curses(lambda: self._edit(selected_item))
-
-    def _edit(self, selected_item):
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
-        readline.clear_history()
-        readline.add_history(line)
-        _input = line
-        _old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        coro = get_input_outside_curses(line)
+        coro.send(None)
         while True:
-            readline.set_startup_hook(lambda: readline.insert_text(_input))
-            _input = input()
-            readline.set_startup_hook()
+            _input = next(coro).strip()
             if _input == line:
+                coro.close()
                 break
             else:
                 if self._update_calendar_line(line_number, _input):
                     break
                 else:
                     print()
-                    print("It looks you entered a wrong calendar line. Try it "
-                          "again. To leave the item unchanged, use the cursor "
-                          "up key to get the original line and press Enter.")
+                    print("It looks you entered a wrong calendar line. Try it again. To leave the item unchanged, use the cursor up key to get the original line and press Enter.")
                     print()
-        signal.signal(signal.SIGINT, _old_handler)
 
     def delete(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         line_number = self._line_numbers[selected_item]
@@ -221,32 +210,20 @@ class Calendar:
         return self._is_exact_date(selected_item)
 
     def reschedule(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
-        screen.clear()
-        screen.refresh()
-        run_outside_curses(lambda: self._reschedule(selected_item))
-
-    def can_reschedule(self, selected_item):
-        return self._is_exact_date(selected_item)
-
-    # TODO abstract code away with _edit
-    def _reschedule(self, selected_item):
-        print("Enter a date as YYYY MM DD or a number to indicate an interval from now.")
-        print()
-        date = self._get_date_part(selected_item)
-        what = self._get_event_part(selected_item)
-        readline.clear_history()
-        _input = ""
-        _old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
+        what = self._get_event_part(selected_item)
+        date = self._get_date_part(selected_item)
+        coro = get_input_outside_curses()
+        coro.send(None)
+        print("Enter a date as YYYY MM DD or a number to indicate an interval from now.")
+        print()
         while True:
             print("Enter a blank line to leave the date unchanged.")
             print()
             print(what)
             print()
-            readline.set_startup_hook(lambda: readline.insert_text(_input))
-            _input = input().strip()
-            readline.set_startup_hook()
+            _input = next(coro).strip()
             if not _input:
                 break
             else:
@@ -271,7 +248,10 @@ class Calendar:
                     print()
                     print("It looks you entered a wrong date. Try it again.")
                     print()
-        signal.signal(signal.SIGINT, _old_handler)
+        coro.close()
+
+    def can_reschedule(self, selected_item):
+        return self._is_exact_date(selected_item)
 
     JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
 
@@ -473,7 +453,9 @@ class Menu:
 def main(stdscr, calendar):
     global _prog_tty_settings
     global _shell_cursor
+    global screen
 
+    screen = stdscr
     # Initialize curses
     _shell_cursor = curses.curs_set(0)
 
@@ -541,12 +523,30 @@ def get_args():
     parser.add_argument("--useYMD", action='store_true', default=False)
     return parser.parse_args()
 
-def run_outside_curses(func):
+def get_input_outside_curses(line=None):
+    screen.clear()
+    screen.refresh()
     termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _shell_tty_settings)
     curses.curs_set(_shell_cursor)
-    func()
-    termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
-    curses.curs_set(0)
+    old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+    readline.clear_history()
+    if line is not None:
+        readline.add_history(line)
+    _input = line
+
+    _ = (yield)
+
+    try:
+        while True:
+            if _input is not None:
+                readline.set_startup_hook(lambda: readline.insert_text(_input))
+            _input = input()
+            readline.set_startup_hook()
+            yield _input
+    finally:
+        signal.signal(signal.SIGINT, old_handler)
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
+        curses.curs_set(0)
 
 if __name__ == "__main__":
     args = get_args()
