@@ -181,7 +181,6 @@ class Calendar:
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
         coro = get_input_outside_curses(line)
-        coro.send(None)
         while True:
             _input = next(coro).strip()
             if _input == line:
@@ -215,7 +214,6 @@ class Calendar:
         what = self._get_event_part(selected_item)
         date = self._get_date_part(selected_item)
         coro = get_input_outside_curses()
-        coro.send(None)
         print("Enter a date as YYYY MM DD or a number to indicate an interval from now.")
         print()
         while True:
@@ -523,6 +521,14 @@ def get_args():
     parser.add_argument("--useYMD", action='store_true', default=False)
     return parser.parse_args()
 
+def auto_advance_generator(func):
+    def inner(line=None):
+        gen = func(line)
+        next(gen)
+        return gen
+    return inner
+
+@auto_advance_generator
 def get_input_outside_curses(line=None):
     screen.clear()
     screen.refresh()
