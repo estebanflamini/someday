@@ -384,28 +384,21 @@ class Menu:
         self._key_bindings =  {}
         self._selected_action = 0
 
-    def show(self):
+    def clear(self):
         self._menu = []
         self._key_bindings = {}
-        if self._calendar.get_items():
-            selected_item = self._item_list.selected_item()
-            self._menu.append(Action("e", "Edit", calendar.edit))
-            if calendar.can_delete(selected_item):
-                self._menu.append(Action("d", "Done (delete)", self._calendar.delete))
-                self._key_bindings[curses.KEY_DC] = self._calendar.delete
-            if calendar.can_reschedule(selected_item):
-                self._menu.append(Action("r", "Reschedule", self._calendar.reschedule))
-            if calendar.can_comment(selected_item):
-                self._menu.append(Action("c", "Comment", self._calendar.comment))
-            if calendar.can_advance(selected_item):
-                self._menu.append(Action("a", "Advance", self._calendar.advance))
-            if calendar.can_open_url(selected_item):
-                self._menu.append(Action("b", "Browse url", self._calendar.open_url))
-            self._key_bindings |= {ord(x.key.lower()): x.action for x in self._menu}
-            self._key_bindings |= {ord(x.key.upper()): x.action for x in self._menu}
-        else:
-            self._menu = []
-            self._key_bindings = {}
+
+    def add(self, what):
+        self._menu.append(what)
+        keys = what.key if isinstance(what.key, list) else [what.key]
+        for key in keys:
+            if isinstance(key, str):
+                self._key_bindings[ord(key.lower())] = what.action
+                self._key_bindings[ord(key.upper())] = what.action
+            else:
+                self._key_bindings[key] = what.action
+
+    def show(self):
         for i, action in enumerate(self._menu):
             color = 2 if i == self._selected_action else 1
             self._screen.addstr(self._minrow, i * (self._width // len(self._menu)), action.name, curses.color_pair(color))
@@ -478,6 +471,22 @@ def _get_input_outside_curses(line=None):
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
         curses.curs_set(0)
 
+def recreate_menu(menu, calendar, item_list):
+    menu.clear()
+    if calendar.get_items():
+        selected_item = item_list.selected_item()
+        menu.add(Action("e", "Edit", calendar.edit))
+        if calendar.can_delete(selected_item):
+            menu.add(Action(["d", curses.KEY_DC], "Done (delete)", calendar.delete))
+        if calendar.can_reschedule(selected_item):
+            menu.add(Action("r", "Reschedule", calendar.reschedule))
+        if calendar.can_comment(selected_item):
+            menu.add(Action("c", "Comment", calendar.comment))
+        if calendar.can_advance(selected_item):
+            menu.add(Action("a", "Advance", calendar.advance))
+        if calendar.can_open_url(selected_item):
+            menu.add(Action("b", "Browse url", calendar.open_url))
+
 # This is the main function for browsing and updating the list of items
 
 def main(stdscr, calendar):
@@ -522,7 +531,8 @@ def main(stdscr, calendar):
         # Draw the list of items
         item_list.show()
 
-        # Draw the menu of actions
+        # Update and draw the menu of actions
+        recreate_menu(menu, calendar, item_list)
         menu.show()
 
         stdscr.refresh()
