@@ -161,25 +161,6 @@ class Calendar:
                 n -= 1
         return n == 0
 
-    def is_advanceable(self, selected_item):
-        date = self.get_date_part(selected_item)
-        if len(re.findall(r"\bj\s*>\s*\d+\b", date)) != 1:
-            return False
-        if len(re.findall(r"\bj\s*[<=]", date)) != 0:
-            return False
-        tmp = self.parse_expression(date)
-        if tmp is None:
-            return False
-        return self._search_j(tmp)
-
-    def _search_j(self, expr):
-        if len(expr) == 3 and expr[0] == ">" and expr[1] == "j" and expr[2].isdigit():
-            return True
-        elif expr[0] == "&":
-            return self._search_j(expr[1]) or self._search_j(expr[2])
-        else:
-            return False
-
     # Actions on the calendar
 
     def edit(self, selected_item):
@@ -257,21 +238,35 @@ class Calendar:
         return self.is_exact_date(selected_item)
 
     JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
+    DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
 
     def advance(self, selected_item):
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
-        today = get_julian_date()
-        self._update_calendar_line(line_number, re.sub(self.JULIAN_THRESHOLD, "j>%s" % today, line))
-
-    DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
+        m = re.match(self.DATE_IN_LISTING, self._items[selected_item])
+        if m is None: # Just in case
+            return
+        date = get_julian_date(m.group(1))
+        self._update_calendar_line(line_number, re.sub(self.JULIAN_THRESHOLD, "j>%s" % date, line))
 
     def can_advance(self, selected_item):
-        if self.is_advanceable(selected_item):
-            m = re.match(self.DATE_IN_LISTING, self._items[selected_item])
-            if m is None:
-                return False
-            return get_julian_date(m.group(1)) <= get_julian_date()
+        date = self.get_date_part(selected_item)
+        if len(re.findall(self.JULIAN_THRESHOLD, date)) != 1:
+            return False
+        if len(re.findall(r"\bj\s*[<=]", date)) != 0:
+            return False
+        tmp = self.parse_expression(date)
+        if tmp is None:
+            return False
+        return self._search_j(tmp)
+
+    def _search_j(self, expr):
+        if len(expr) == 3 and expr[0] == ">" and expr[1] == "j" and expr[2].isdigit():
+            return True
+        elif expr[0] == "&":
+            return self._search_j(expr[1]) or self._search_j(expr[2])
+        else:
+            return False
 
     def _update_calendar_line(self, line_number, what):
         old_value = self._calendar_lines[line_number]
