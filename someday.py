@@ -165,107 +165,6 @@ class Calendar:
                 n -= 1
         return n == 0
 
-    # Actions on the calendar
-
-    def edit(self, selected_item):
-        line = self.get_source_line(selected_item)
-        coro = get_input_outside_curses(line)
-        while True:
-            _input = next(coro).strip()
-            if _input == line:
-                coro.close()
-                break
-            else:
-                if self.update_source_line(selected_item, _input):
-                    break
-                else:
-                    print()
-                    print("It looks you entered a wrong calendar line. Try it again. To leave the item unchanged, use the cursor up key to get the original line and press Enter.")
-                    print()
-
-    def delete(self, selected_item):
-        self.update_source_line(selected_item, None)
-
-    def can_delete(self, selected_item):
-        return self.is_exact_date(selected_item)
-
-    def comment(self, selected_item):
-        self.update_source_line(selected_item, '#' + self.get_source_line(selected_item))
-
-    def can_comment(self, selected_item):
-        return self.is_exact_date(selected_item)
-
-    def reschedule(self, selected_item):
-        what = self.get_event_part(selected_item)
-        date = self.get_date_part(selected_item)
-        coro = get_input_outside_curses()
-        print("Enter a date as YYYY MM DD or a number to indicate an interval from now.")
-        print()
-        while True:
-            print("Enter a blank line to leave the date unchanged.")
-            print()
-            print(what)
-            print()
-            _input = next(coro).strip()
-            if not _input:
-                break
-            else:
-                if _input.isdigit():
-                    today = get_julian_date()
-                    if not today:
-                        print("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
-                        continue
-                    if args.useYMD:
-                        try:
-                            date = subprocess.run(["date", "--date", "%s days" % int(_input), "+%Y %m %d"], capture_output=True, text=True, check=True).stdout.strip()
-                        except Exception:
-                            print("There was an error while trying to compute the new date. Enter an exact date instead of an interval.")
-                            continue
-                    else:
-                        date = "j=%s" % (today + int(_input))
-                else:
-                    date = _input
-                if self.update_source_line(selected_item, "%s , %s" % (date, what)):
-                    break
-                else:
-                    print()
-                    print("It looks you entered a wrong date. Try it again.")
-                    print()
-        coro.close()
-
-    def can_reschedule(self, selected_item):
-        return self.is_exact_date(selected_item)
-
-    JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
-    DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
-
-    def advance(self, selected_item):
-        line = self.get_source_line(selected_item)
-        m = re.match(self.DATE_IN_LISTING, self._items[selected_item])
-        if m is None: # Just in case
-            return
-        date = get_julian_date(m.group(1))
-        self.update_source_line(selected_item, re.sub(self.JULIAN_THRESHOLD, "j>%s" % date, line))
-
-    def can_advance(self, selected_item):
-        date = self.get_date_part(selected_item)
-        if len(re.findall(self.JULIAN_THRESHOLD, date)) != 1:
-            return False
-        if len(re.findall(r"\bj\s*[<=]", date)) != 0:
-            return False
-        tmp = self.parse_expression(date)
-        if tmp is None:
-            return False
-        return self._search_j(tmp)
-
-    def _search_j(self, expr):
-        if len(expr) == 3 and expr[0] == ">" and expr[1] == "j" and expr[2].isdigit():
-            return True
-        elif expr[0] == "&":
-            return self._search_j(expr[1]) or self._search_j(expr[2])
-        else:
-            return False
-
     def update_source_line(self, index, what):
         line_number = self._line_numbers[index]
         old_value = self._calendar_lines[line_number]
@@ -283,17 +182,6 @@ class Calendar:
             else:
                 self._calendar_lines.insert(line_number, old_value)
             return False
-
-    URL = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
-
-    def open_url(self, selected_item):
-        m = re.search("(%s)" % self.URL, self._items[selected_item])
-        if m is not None:
-            url = m.group(1)
-            subprocess.run(["xdg-open", url])
-
-    def can_open_url(self, selected_item):
-        return re.search("(%s)" % self.URL, self._items[selected_item]) is not None
 
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True, text=True).stdout.strip()
@@ -428,6 +316,118 @@ def get_args():
     parser.add_argument("--useYMD", action='store_true', default=False)
     return parser.parse_args()
 
+# Actions on the calendar
+
+def edit(calendar, selected_item):
+    line = calendar.get_source_line(selected_item)
+    coro = get_input_outside_curses(line)
+    while True:
+        _input = next(coro).strip()
+        if _input == line:
+            coro.close()
+            break
+        else:
+            if calendar.update_source_line(selected_item, _input):
+                break
+            else:
+                print()
+                print("It looks you entered a wrong calendar line. Try it again. To leave the item unchanged, use the cursor up key to get the original line and press Enter.")
+                print()
+
+def delete(calendar, selected_item):
+    calendar.update_source_line(selected_item, None)
+
+def can_delete(calendar, selected_item):
+    return calendar.is_exact_date(selected_item)
+
+def comment(calendar, selected_item):
+    calendar.update_source_line(selected_item, '#' + calendar.get_source_line(selected_item))
+
+def can_comment(calendar, selected_item):
+    return calendar.is_exact_date(selected_item)
+
+def reschedule(calendar, selected_item):
+    what = calendar.get_event_part(selected_item)
+    date = calendar.get_date_part(selected_item)
+    coro = get_input_outside_curses()
+    print("Enter a date as YYYY MM DD or a number to indicate an interval from now.")
+    print()
+    while True:
+        print("Enter a blank line to leave the date unchanged.")
+        print()
+        print(what)
+        print()
+        _input = next(coro).strip()
+        if not _input:
+            break
+        else:
+            if _input.isdigit():
+                today = get_julian_date()
+                if not today:
+                    print("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
+                    continue
+                if args.useYMD:
+                    try:
+                        date = subprocess.run(["date", "--date", "%s days" % int(_input), "+%Y %m %d"], capture_output=True, text=True, check=True).stdout.strip()
+                    except Exception:
+                        print("There was an error while trying to compute the new date. Enter an exact date instead of an interval.")
+                        continue
+                else:
+                    date = "j=%s" % (today + int(_input))
+            else:
+                date = _input
+            if calendar.update_source_line(selected_item, "%s , %s" % (date, what)):
+                break
+            else:
+                print()
+                print("It looks you entered a wrong date. Try it again.")
+                print()
+    coro.close()
+
+def can_reschedule(calendar, selected_item):
+    return calendar.is_exact_date(selected_item)
+
+JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
+DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
+
+def advance(calendar, selected_item):
+    line = calendar.get_source_line(selected_item)
+    m = re.match(DATE_IN_LISTING, calendar.get_item(selected_item))
+    if m is None: # Just in case
+        return
+    date = get_julian_date(m.group(1))
+    calendar.update_source_line(selected_item, re.sub(JULIAN_THRESHOLD, "j>%s" % date, line))
+
+def can_advance(calendar, selected_item):
+    date = calendar.get_date_part(selected_item)
+    if len(re.findall(JULIAN_THRESHOLD, date)) != 1:
+        return False
+    if len(re.findall(r"\bj\s*[<=]", date)) != 0:
+        return False
+    tmp = calendar.parse_expression(date)
+    if tmp is None:
+        return False
+    return _search_j(tmp)
+
+def _search_j(expr):
+    if len(expr) == 3 and expr[0] == ">" and expr[1] == "j" and expr[2].isdigit():
+        return True
+    elif expr[0] == "&":
+        return _search_j(expr[1]) or _search_j(expr[2])
+    else:
+        return False
+
+URL = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
+
+def open_url(calendar, selected_item):
+    m = re.search(URL, calendar.get_item(selected_item))
+    if m is not None:
+        url = m.group(0)
+        subprocess.run(["xdg-open", url])
+
+def can_open_url(calendar, selected_item):
+    return re.search("(%s)" % URL, calendar.get_item(selected_item)) is not None
+
 def expand(item, minrow, mincol, maxrow, maxcol):
     minrow -= 1
     width = maxcol - mincol + 1
@@ -475,17 +475,17 @@ def recreate_menu(menu, calendar, item_list):
     menu.clear()
     if calendar.get_items():
         selected_item = item_list.selected_item()
-        menu.add(Action("e", "Edit", calendar.edit))
-        if calendar.can_delete(selected_item):
-            menu.add(Action(["d", curses.KEY_DC], "Done (delete)", calendar.delete))
-        if calendar.can_reschedule(selected_item):
-            menu.add(Action("r", "Reschedule", calendar.reschedule))
-        if calendar.can_comment(selected_item):
-            menu.add(Action("c", "Comment", calendar.comment))
-        if calendar.can_advance(selected_item):
-            menu.add(Action("a", "Advance", calendar.advance))
-        if calendar.can_open_url(selected_item):
-            menu.add(Action("b", "Browse url", calendar.open_url))
+        menu.add(Action("e", "Edit", edit))
+        if can_delete(calendar, selected_item):
+            menu.add(Action(["d", curses.KEY_DC], "Done (delete)", delete))
+        if can_reschedule(calendar, selected_item):
+            menu.add(Action("r", "Reschedule", reschedule))
+        if can_comment(calendar, selected_item):
+            menu.add(Action("c", "Comment", comment))
+        if can_advance(calendar, selected_item):
+            menu.add(Action("a", "Advance", advance))
+        if can_open_url(calendar, selected_item):
+            menu.add(Action("b", "Browse url", open_url))
 
 # This is the main function for browsing and updating the list of items
 
@@ -560,7 +560,7 @@ def main(stdscr, calendar):
             else:
                 action = menu.get_action(key)
                 if action is not None:
-                    action(selected_item)
+                    action(calendar, selected_item)
 
 if __name__ == "__main__":
     args = get_args()
