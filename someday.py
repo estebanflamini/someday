@@ -434,6 +434,56 @@ class Menu:
         if self._selected_action < len(self._menu) - 1:
             self._selected_action += 1
 
+def get_args():
+    parser = argparse.ArgumentParser(prog="someday")
+    parser.add_argument("--past", type=int, default=None)
+    parser.add_argument("--future", type=int, default=None)
+    parser.add_argument("--useYMD", action='store_true', default=False)
+    return parser.parse_args()
+
+def expand(item, minrow, mincol, maxrow, maxcol):
+    minrow -= 1
+    width = maxcol - mincol + 1
+    lines = textwrap.wrap(item, width-2)
+    height = len(lines) + 2
+    pad = curses.newpad(height, width)
+    pad.border()
+    for i, line in enumerate(lines):
+        pad.addstr(i+1, 1, line)
+    minrow = min(minrow, maxrow - height + 1)
+    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
+    pad.getch()
+
+def get_input_outside_curses(line=None):
+    gen = _get_input_outside_curses(line)
+    next(gen)
+    return gen
+
+def _get_input_outside_curses(line=None):
+    screen.clear()
+    screen.refresh()
+    termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _shell_tty_settings)
+    curses.curs_set(_shell_cursor)
+    old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+    readline.clear_history()
+    if line is not None:
+        readline.add_history(line)
+    _input = line
+
+    yield
+
+    try:
+        while True:
+            if _input is not None:
+                readline.set_startup_hook(lambda: readline.insert_text(_input))
+            _input = input()
+            readline.set_startup_hook()
+            yield _input
+    finally:
+        signal.signal(signal.SIGINT, old_handler)
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
+        curses.curs_set(0)
+
 # This is the main function for browsing and updating the list of items
 
 def main(stdscr, calendar):
@@ -505,56 +555,6 @@ def main(stdscr, calendar):
                 expand(item, row, 0, last_row, width-1)
             else:
                 menu.dispatch_key(key, selected_item, row, 0, last_row, width-1)
-
-def get_args():
-    parser = argparse.ArgumentParser(prog="someday")
-    parser.add_argument("--past", type=int, default=None)
-    parser.add_argument("--future", type=int, default=None)
-    parser.add_argument("--useYMD", action='store_true', default=False)
-    return parser.parse_args()
-
-def expand(item, minrow, mincol, maxrow, maxcol):
-    minrow -= 1
-    width = maxcol - mincol + 1
-    lines = textwrap.wrap(item, width-2)
-    height = len(lines) + 2
-    pad = curses.newpad(height, width)
-    pad.border()
-    for i, line in enumerate(lines):
-        pad.addstr(i+1, 1, line)
-    minrow = min(minrow, maxrow - height + 1)
-    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
-    pad.getch()
-
-def get_input_outside_curses(line=None):
-    gen = _get_input_outside_curses(line)
-    next(gen)
-    return gen
-
-def _get_input_outside_curses(line=None):
-    screen.clear()
-    screen.refresh()
-    termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _shell_tty_settings)
-    curses.curs_set(_shell_cursor)
-    old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-    readline.clear_history()
-    if line is not None:
-        readline.add_history(line)
-    _input = line
-
-    yield
-
-    try:
-        while True:
-            if _input is not None:
-                readline.set_startup_hook(lambda: readline.insert_text(_input))
-            _input = input()
-            readline.set_startup_hook()
-            yield _input
-    finally:
-        signal.signal(signal.SIGINT, old_handler)
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
-        curses.curs_set(0)
 
 if __name__ == "__main__":
     args = get_args()
