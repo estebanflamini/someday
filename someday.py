@@ -173,7 +173,7 @@ class Calendar:
                 coro.close()
                 break
             else:
-                if self._update_calendar_line(line_number, _input):
+                if self.update_line(line_number, _input):
                     break
                 else:
                     print()
@@ -182,14 +182,14 @@ class Calendar:
 
     def delete(self, selected_item):
         line_number = self._line_numbers[selected_item]
-        self._update_calendar_line(line_number, None)
+        self.update_line(line_number, None)
 
     def can_delete(self, selected_item):
         return self.is_exact_date(selected_item)
 
     def comment(self, selected_item):
         line_number = self._line_numbers[selected_item]
-        self._update_calendar_line(line_number, '#' + self._calendar_lines[line_number])
+        self.update_line(line_number, '#' + self._calendar_lines[line_number])
 
     def can_comment(self, selected_item):
         return self.is_exact_date(selected_item)
@@ -226,7 +226,7 @@ class Calendar:
                         date = "j=%s" % (today + int(_input))
                 else:
                     date = _input
-                if self._update_calendar_line(line_number, "%s , %s" % (date, what)):
+                if self.update_line(line_number, "%s , %s" % (date, what)):
                     break
                 else:
                     print()
@@ -247,7 +247,7 @@ class Calendar:
         if m is None: # Just in case
             return
         date = get_julian_date(m.group(1))
-        self._update_calendar_line(line_number, re.sub(self.JULIAN_THRESHOLD, "j>%s" % date, line))
+        self.update_line(line_number, re.sub(self.JULIAN_THRESHOLD, "j>%s" % date, line))
 
     def can_advance(self, selected_item):
         date = self.get_date_part(selected_item)
@@ -268,7 +268,7 @@ class Calendar:
         else:
             return False
 
-    def _update_calendar_line(self, line_number, what):
+    def update_line(self, line_number, what):
         old_value = self._calendar_lines[line_number]
         if what is not None:
             self._calendar_lines[line_number] = what
