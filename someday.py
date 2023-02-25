@@ -414,17 +414,15 @@ class Menu:
             color = 2 if i == self._selected_action else 1
             self._screen.addstr(self._minrow, i * (self._width // len(self._menu)), action.name, curses.color_pair(color))
 
-    def dispatch_key(self, key, selected_item, minrow, mincol, maxrow, maxcol):
+    def get_action(self, key):
         if not calendar.get_items():
-            return
+            return None
         elif key == 32:
-            action = self._menu[self._selected_action].action
+            return self._menu[self._selected_action].action
         elif key in self._key_bindings:
-            action = self._key_bindings[key]
+            return self._key_bindings[key]
         else:
-            return
-
-        action(self._screen, selected_item, minrow, mincol, maxrow, maxcol)
+            return None
 
     def left(self):
         if self._selected_action > 0:
@@ -554,7 +552,9 @@ def main(stdscr, calendar):
             if key == 10:
                 expand(item, row, 0, last_row, width-1)
             else:
-                menu.dispatch_key(key, selected_item, row, 0, last_row, width-1)
+                action = menu.get_action(key)
+                if action is not None:
+                    action(stdscr, selected_item, row, 0, last_row, width-1)
 
 if __name__ == "__main__":
     args = get_args()
