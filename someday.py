@@ -98,7 +98,7 @@ class Calendar:
         date = self.get_date_expression(index)
         if date is None: # just in case
             return False
-        if self.is_literal(date):
+        if self._is_literal(date):
             return True
         tmp = self.parse_expression(date)
         if tmp is None:
@@ -113,7 +113,7 @@ class Calendar:
                     return False
         return False
 
-    def is_literal(self, text):
+    def _is_literal(self, text):
         # Actually, bogus strings such as 'bla bla bla' will pass this test,
         # but we can assume that any string which is passed to this method
         # comes from a valid calendar containing only valid day and month names
