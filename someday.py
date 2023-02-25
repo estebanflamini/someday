@@ -20,6 +20,12 @@ def get_args():
     parser.add_argument("--useYMD", action='store_true', default=False)
     return parser.parse_args()
 
+# These globals will be populated and used below
+_prog_tty_settings = None
+_shell_tty_settings = None
+_shell_cursor = None
+screen = None
+
 # A class for interacting with the calendar
 
 class Calendar:
