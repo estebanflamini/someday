@@ -72,6 +72,10 @@ class Calendar:
     def get_item(self, index):
         return self._items[index]
 
+    def get_source_line(self, index):
+        line_number = self._line_numbers[index]
+        return self._calendar_lines[line_number]
+
     # Update the true calendar
 
     def write_calendar(self):
@@ -164,8 +168,7 @@ class Calendar:
     # Actions on the calendar
 
     def edit(self, selected_item):
-        line_number = self._line_numbers[selected_item]
-        line = self._calendar_lines[line_number]
+        line = self.get_source_line(selected_item)
         coro = get_input_outside_curses(line)
         while True:
             _input = next(coro).strip()
@@ -173,7 +176,7 @@ class Calendar:
                 coro.close()
                 break
             else:
-                if self.update_line(line_number, _input):
+                if self.update_source_line(selected_item, _input):
                     break
                 else:
                     print()
@@ -181,22 +184,18 @@ class Calendar:
                     print()
 
     def delete(self, selected_item):
-        line_number = self._line_numbers[selected_item]
-        self.update_line(line_number, None)
+        self.update_source_line(selected_item, None)
 
     def can_delete(self, selected_item):
         return self.is_exact_date(selected_item)
 
     def comment(self, selected_item):
-        line_number = self._line_numbers[selected_item]
-        self.update_line(line_number, '#' + self._calendar_lines[line_number])
+        self.update_source_line(selected_item, '#' + self.get_source_line(selected_item))
 
     def can_comment(self, selected_item):
         return self.is_exact_date(selected_item)
 
     def reschedule(self, selected_item):
-        line_number = self._line_numbers[selected_item]
-        line = self._calendar_lines[line_number]
         what = self.get_event_part(selected_item)
         date = self.get_date_part(selected_item)
         coro = get_input_outside_curses()
@@ -226,7 +225,7 @@ class Calendar:
                         date = "j=%s" % (today + int(_input))
                 else:
                     date = _input
-                if self.update_line(line_number, "%s , %s" % (date, what)):
+                if self.update_source_line(selected_item, "%s , %s" % (date, what)):
                     break
                 else:
                     print()
@@ -241,13 +240,12 @@ class Calendar:
     DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
 
     def advance(self, selected_item):
-        line_number = self._line_numbers[selected_item]
-        line = self._calendar_lines[line_number]
+        line = self.get_source_line(selected_item)
         m = re.match(self.DATE_IN_LISTING, self._items[selected_item])
         if m is None: # Just in case
             return
         date = get_julian_date(m.group(1))
-        self.update_line(line_number, re.sub(self.JULIAN_THRESHOLD, "j>%s" % date, line))
+        self.update_source_line(selected_item, re.sub(self.JULIAN_THRESHOLD, "j>%s" % date, line))
 
     def can_advance(self, selected_item):
         date = self.get_date_part(selected_item)
@@ -268,7 +266,8 @@ class Calendar:
         else:
             return False
 
-    def update_line(self, line_number, what):
+    def update_source_line(self, index, what):
+        line_number = self._line_numbers[index]
         old_value = self._calendar_lines[line_number]
         if what is not None:
             self._calendar_lines[line_number] = what
