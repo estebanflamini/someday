@@ -378,31 +378,41 @@ def reschedule(calendar, selected_item):
         if not _input:
             break
         else:
-            if _input.isdigit():
-                today = get_julian_date()
-                if not today:
-                    print("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
+            if is_interval(_input):
+                date = get_interval(_input)
+                if date is None:
                     continue
-                if args.useYMD:
-                    try:
-                        date = subprocess.run(["date", "--date", "%s days" % int(_input), "+%Y %m %d"], capture_output=True, text=True, check=True).stdout.strip()
-                    except Exception:
-                        print("There was an error while trying to compute the new date. Enter an exact date instead of an interval.")
-                        continue
-                else:
-                    date = "j=%s" % (today + int(_input))
             else:
                 date = _input
             if calendar.update_source_line(selected_item, "%s , %s" % (date, what)):
                 break
             else:
                 print()
-                print("It looks you entered a wrong date. Try it again.")
+                print("It looks you entered a wrong date/interval. Try it again.")
                 print()
     coro.close()
 
 def can_reschedule(calendar, selected_item):
     return calendar.happens_only_once(selected_item)
+
+def is_interval(text):
+    text = text.strip()
+    return text.isdigit() or text.startswith("-") and text[1:].isdigit()
+
+def get_interval(text):
+    today = get_julian_date()
+    if not today:
+        print("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
+        return None
+    delta = int(text)
+    if args.useYMD:
+        try:
+            return subprocess.run(["date", "--date", "%s days" % int(text), "+%Y %m %d"], capture_output=True, text=True, check=True).stdout.strip()
+        except Exception:
+            print("There was an error while trying to compute the new date. Enter an exact date instead of an interval.")
+            return None
+    else:
+        return "j=%s" % (today + delta)
 
 JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
 DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
