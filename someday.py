@@ -595,6 +595,11 @@ def main(stdscr, calendar):
     # Generate the menu and key bindings
     menu = Menu(calendar, item_list, stdscr, menu_row, 0, menu_row, width-1)
 
+    try:
+        julian_date = get_julian_date()
+    except Exception:
+        julian_date = "Unable to determine."
+
     # Main loop for handling key inputs
     while True:
 
@@ -602,10 +607,6 @@ def main(stdscr, calendar):
 
         # Show the date at top of the screen
 
-        try:
-            julian_date = get_julian_date()
-        except Exception:
-            julian_date = "Unable to determine."
         stdscr.addstr(0, 0, "%s - Julian date: %s" % (get_date(), julian_date))
 
         # Draw the list of items
