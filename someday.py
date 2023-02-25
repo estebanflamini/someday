@@ -87,18 +87,18 @@ class Calendar:
 
     # Utilities on calendar entries
 
-    def get_date_expression(self, selected_item):
-        line = self.get_source_line(selected_item)
+    def get_date_expression(self, index):
+        line = self.get_source_line(index)
         m = re.match(r"^(.+?)\s*,", line)
         return m.group(1).lstrip() if m else None
 
-    def get_event(self, selected_item):
-        line = self.get_source_line(selected_item)
+    def get_event(self, index):
+        line = self.get_source_line(index)
         m = re.search(r",\s*(.+?)$", line)
         return m.group(1).rstrip() if m else None
 
-    def happens_only_once(self, selected_item):
-        date = self.get_date_expression(selected_item)
+    def happens_only_once(self, index):
+        date = self.get_date_expression(index)
         if date is None: # just in case
             return False
         if self.is_literal(date):
