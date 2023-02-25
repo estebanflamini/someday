@@ -327,7 +327,7 @@ def get_julian_date(now=None):
         # The date is not surrounded by ', because no shell processing will be
         # done and we must pass the string as it will be received by when
         d.append("--now=%s" % now)
-    tmp = subprocess.run(d, capture_output=True, text=True).stdout.strip()
+    tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout.strip()
     m = re.search(r"(\d{5})\.$", tmp)
     j = int(m.group(1)) if m else None
     _julian_dates[now] = j
@@ -367,7 +367,7 @@ def reschedule(calendar, selected_item):
     what = calendar.get_event(selected_item)
     date = calendar.get_date_expression(selected_item)
     coro = get_input_outside_curses()
-    print("Enter a date as YYYY MM DD or a number to indicate an interval from now.")
+    print("Enter a date as YYYY MM DD or a number (negative, zero, or positive) to indicate that many days from now.")
     print()
     while True:
         print("Enter a blank line to leave the date unchanged.")
@@ -400,8 +400,9 @@ def is_interval(text):
     return text.isdigit() or text.startswith("-") and text[1:].isdigit()
 
 def get_interval(text):
-    today = get_julian_date()
-    if not today:
+    try:
+        today = get_julian_date()
+    except Exception:
         print("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
         return None
     delta = int(text)
@@ -422,7 +423,14 @@ def advance(calendar, selected_item):
     m = re.match(DATE_IN_LISTING, calendar.get_item(selected_item))
     if m is None: # Just in case
         return
-    date = get_julian_date(m.group(1))
+    try:
+        date = get_julian_date(m.group(1))
+    except Exception:
+        screen.clear()
+        screen.refresh()
+        print("There has been an error while trying to calculate the advanced date.")
+        screen.getch()
+        return
     calendar.update_source_line(selected_item, re.sub(JULIAN_THRESHOLD, "j>%s" % date, line))
 
 def can_advance(calendar, selected_item):
@@ -448,6 +456,40 @@ def duplicate(calendar, selected_item):
     new_line = "%s , [+] %s" % (date, what)
     calendar.add_source_line(new_line)
 
+def new(calendar, selected_item):
+    coro = get_input_outside_curses()
+    print("What?:")
+    print()
+    what = next(coro).strip()
+    coro.close()
+    coro = get_input_outside_curses(clear_screen=False)
+    print()
+    while what:
+        print("When? (Enter a date as YYYY MM DD, a number (negative, zero, or positive) to indicate that many days from now or a valid when\'s expression:")
+        print()
+        _input = next(coro).strip()
+        print()
+        if not _input:
+            break
+        else:
+            date = None
+            if is_interval(_input):
+                date = get_interval(_input)
+            elif calendar.parse_expression(_input):
+                date = _input
+            else:
+                try:
+                    get_julian_date(_input)
+                    date = _input
+                except Exception:
+                    pass
+            if date and calendar.add_source_line("%s , %s" % (date, what)):
+                break
+            else:
+                print("It looks you entered a wrong date/interval/expression (or there was an error while trying to calculate the corresponding julian date). Try it again.")
+                print()
+    coro.close()
+
 URL = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 
 def open_url(calendar, selected_item):
@@ -459,14 +501,15 @@ def open_url(calendar, selected_item):
 def can_open_url(calendar, selected_item):
     return re.search("(%s)" % URL, calendar.get_item(selected_item)) is not None
 
-def get_input_outside_curses(line=None):
-    gen = _get_input_outside_curses(line)
+def get_input_outside_curses(line=None, clear_screen=True):
+    gen = _get_input_outside_curses(line, clear_screen)
     next(gen)
     return gen
 
-def _get_input_outside_curses(line=None):
-    screen.clear()
-    screen.refresh()
+def _get_input_outside_curses(line=None, clear_screen=True):
+    if clear_screen:
+        screen.clear()
+        screen.refresh()
     termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _shell_tty_settings)
     curses.curs_set(_shell_cursor)
     old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -518,6 +561,7 @@ def recreate_menu(menu, calendar, item_list):
         if can_open_url(calendar, selected_item):
             menu.add(Action("b", "Browse url", open_url))
         menu.add(Action("u", "dUplicate", duplicate))
+    menu.add(Action("n", "New", new))
 
 # This is the main function for browsing and updating the list of items
 
@@ -558,7 +602,11 @@ def main(stdscr, calendar):
 
         # Show the date at top of the screen
 
-        stdscr.addstr(0, 0, "%s - Julian date: %s" % (get_date(), get_julian_date()))
+        try:
+            julian_date = get_julian_date()
+        except Exception:
+            julian_date = "Unable to determine."
+        stdscr.addstr(0, 0, "%s - Julian date: %s" % (get_date(), julian_date))
 
         # Draw the list of items
         item_list.show()
