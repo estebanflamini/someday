@@ -176,19 +176,25 @@ class Calendar:
     def update_source_line(self, index, what):
         line_number = self._line_numbers[index]
         old_value = self._calendar_lines[line_number]
-        if what is not None:
-            self._calendar_lines[line_number] = what
-        else:
-            del self._calendar_lines[line_number]
+        self._calendar_lines[line_number] = str(what).strip()
         try:
             self.generate_proxy_calendar()
             self._modified = True
             return True
         except Exception:
-            if what is not None:
-                self._calendar_lines[line_number] = old_value
-            else:
-                self._calendar_lines.insert(line_number, old_value)
+            self._calendar_lines[line_number] = old_value
+            return False
+
+    def delete_source_line(self, index):
+        line_number = self._line_numbers[index]
+        old_value = self._calendar_lines[line_number]
+        del self._calendar_lines[line_number]
+        try:
+            self.generate_proxy_calendar()
+            self._modified = True
+            return True
+        except Exception: # This should never happen, but just in case...
+            self._calendar_lines.insert(line_number, old_value)
             return False
 
 # A class for browsing the calendar's items
@@ -336,7 +342,7 @@ def edit(calendar, selected_item):
                 print()
 
 def delete(calendar, selected_item):
-    calendar.update_source_line(selected_item, None)
+    calendar.delete_source_line(selected_item)
 
 def can_delete(calendar, selected_item):
     return calendar.happens_only_once(selected_item)
