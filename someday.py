@@ -287,7 +287,7 @@ class Menu:
             self._screen.addstr(self._minrow, i * (self._width // len(self._menu)), action.name, curses.color_pair(color))
 
     def get_action(self, key):
-        if not calendar.get_items():
+        if not self._calendar.get_items():
             return None
         elif key == 32:
             return self._menu[self._selected_action].action
