@@ -69,6 +69,9 @@ class Calendar:
     def get_items(self):
         return self._items
 
+    def get_item(self, index):
+        return self._items[index]
+
     # Update the true calendar
 
     def write_calendar(self):
@@ -366,20 +369,6 @@ class List:
         self._adjust_selected_item()
         return self._selected_row
 
-    def expand(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
-        minrow -= 1
-        width = maxcol - mincol + 1
-        item = self._items[selected_item]
-        lines = textwrap.wrap(item, width-2)
-        height = len(lines) + 2
-        pad = curses.newpad(height, width)
-        pad.border()
-        for i, line in enumerate(lines):
-            pad.addstr(i+1, 1, line)
-        minrow = min(minrow, maxrow - height + 1)
-        pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
-        pad.getch()
-
 # A class for showing the menu and keeping track of available actions
 
 Action = namedtuple("Action", ["key", "name", "action"])
@@ -418,7 +407,6 @@ class Menu:
                 self._menu.append(Action("b", "Browse url", self._calendar.open_url))
             self._key_bindings |= {ord(x.key.lower()): x.action for x in self._menu}
             self._key_bindings |= {ord(x.key.upper()): x.action for x in self._menu}
-            self._key_bindings[10] = self._item_list.expand
         else:
             self._menu = []
             self._key_bindings = {}
@@ -511,8 +499,12 @@ def main(stdscr, calendar):
             break
         else:
             selected_item = item_list.selected_item()
+            item = calendar.get_item(selected_item)
             row = first_row + item_list.selected_row()
-            menu.dispatch_key(key, selected_item, row, 0, last_row, width-1)
+            if key == 10:
+                expand(item, row, 0, last_row, width-1)
+            else:
+                menu.dispatch_key(key, selected_item, row, 0, last_row, width-1)
 
 def get_args():
     parser = argparse.ArgumentParser(prog="someday")
@@ -520,6 +512,19 @@ def get_args():
     parser.add_argument("--future", type=int, default=None)
     parser.add_argument("--useYMD", action='store_true', default=False)
     return parser.parse_args()
+
+def expand(item, minrow, mincol, maxrow, maxcol):
+    minrow -= 1
+    width = maxcol - mincol + 1
+    lines = textwrap.wrap(item, width-2)
+    height = len(lines) + 2
+    pad = curses.newpad(height, width)
+    pad.border()
+    for i, line in enumerate(lines):
+        pad.addstr(i+1, 1, line)
+    minrow = min(minrow, maxrow - height + 1)
+    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
+    pad.getch()
 
 def get_input_outside_curses(line=None):
     gen = _get_input_outside_curses(line)
