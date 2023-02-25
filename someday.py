@@ -13,6 +13,13 @@ import termios
 import readline
 import signal
 
+def get_args():
+    parser = argparse.ArgumentParser(prog="someday")
+    parser.add_argument("--past", type=int, default=None)
+    parser.add_argument("--future", type=int, default=None)
+    parser.add_argument("--useYMD", action='store_true', default=False)
+    return parser.parse_args()
+
 # A class for interacting with the calendar
 
 class Calendar:
@@ -178,25 +185,6 @@ class Calendar:
                 self._calendar_lines.insert(line_number, old_value)
             return False
 
-def get_date():
-    return subprocess.run(["when", "d"], capture_output=True, text=True).stdout.strip()
-
-_julian_dates = {}
-
-def get_julian_date(now=None):
-    if now in _julian_dates:
-        return _julian_dates[now]
-    d = ["when", "j"]
-    if now is not None:
-        # The date is not surrounded by ', because no shell processing will be
-        # done and we must pass the string as it will be received by when
-        d.append("--now=%s" % now)
-    tmp = subprocess.run(d, capture_output=True, text=True).stdout.strip()
-    m = re.search(r"(\d{5})\.$", tmp)
-    j = int(m.group(1)) if m else None
-    _julian_dates[now] = j
-    return j
-
 # A class for browsing the calendar's items
 
 class List:
@@ -304,12 +292,24 @@ class Menu:
         if self._selected_action < len(self._menu) - 1:
             self._selected_action += 1
 
-def get_args():
-    parser = argparse.ArgumentParser(prog="someday")
-    parser.add_argument("--past", type=int, default=None)
-    parser.add_argument("--future", type=int, default=None)
-    parser.add_argument("--useYMD", action='store_true', default=False)
-    return parser.parse_args()
+def get_date():
+    return subprocess.run(["when", "d"], capture_output=True, text=True).stdout.strip()
+
+_julian_dates = {}
+
+def get_julian_date(now=None):
+    if now in _julian_dates:
+        return _julian_dates[now]
+    d = ["when", "j"]
+    if now is not None:
+        # The date is not surrounded by ', because no shell processing will be
+        # done and we must pass the string as it will be received by when
+        d.append("--now=%s" % now)
+    tmp = subprocess.run(d, capture_output=True, text=True).stdout.strip()
+    m = re.search(r"(\d{5})\.$", tmp)
+    j = int(m.group(1)) if m else None
+    _julian_dates[now] = j
+    return j
 
 # Actions on the calendar
 
@@ -423,19 +423,6 @@ def open_url(calendar, selected_item):
 def can_open_url(calendar, selected_item):
     return re.search("(%s)" % URL, calendar.get_item(selected_item)) is not None
 
-def expand(item, minrow, mincol, maxrow, maxcol):
-    minrow -= 1
-    width = maxcol - mincol + 1
-    lines = textwrap.wrap(item, width-2)
-    height = len(lines) + 2
-    pad = curses.newpad(height, width)
-    pad.border()
-    for i, line in enumerate(lines):
-        pad.addstr(i+1, 1, line)
-    minrow = min(minrow, maxrow - height + 1)
-    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
-    pad.getch()
-
 def get_input_outside_curses(line=None):
     gen = _get_input_outside_curses(line)
     next(gen)
@@ -465,6 +452,19 @@ def _get_input_outside_curses(line=None):
         signal.signal(signal.SIGINT, old_handler)
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
         curses.curs_set(0)
+
+def expand(item, minrow, mincol, maxrow, maxcol):
+    minrow -= 1
+    width = maxcol - mincol + 1
+    lines = textwrap.wrap(item, width-2)
+    height = len(lines) + 2
+    pad = curses.newpad(height, width)
+    pad.border()
+    for i, line in enumerate(lines):
+        pad.addstr(i+1, 1, line)
+    minrow = min(minrow, maxrow - height + 1)
+    pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
+    pad.getch()
 
 def recreate_menu(menu, calendar, item_list):
     menu.clear()
