@@ -180,7 +180,7 @@ class Calendar:
 
     # Actions on the calendar
 
-    def edit(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+    def edit(self, selected_item):
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
         coro = get_input_outside_curses(line)
@@ -197,21 +197,21 @@ class Calendar:
                     print("It looks you entered a wrong calendar line. Try it again. To leave the item unchanged, use the cursor up key to get the original line and press Enter.")
                     print()
 
-    def delete(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+    def delete(self, selected_item):
         line_number = self._line_numbers[selected_item]
         self._update_calendar_line(line_number, None)
 
     def can_delete(self, selected_item):
         return self.is_exact_date(selected_item)
 
-    def comment(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+    def comment(self, selected_item):
         line_number = self._line_numbers[selected_item]
         self._update_calendar_line(line_number, '#' + self._calendar_lines[line_number])
 
     def can_comment(self, selected_item):
         return self.is_exact_date(selected_item)
 
-    def reschedule(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+    def reschedule(self, selected_item):
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
         what = self.get_event_part(selected_item)
@@ -256,7 +256,7 @@ class Calendar:
 
     JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
 
-    def advance(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+    def advance(self, selected_item):
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
         today = get_julian_date()
@@ -290,7 +290,7 @@ class Calendar:
 
     URL = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 
-    def open_url(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
+    def open_url(self, selected_item):
         m = re.search("(%s)" % self.URL, self._items[selected_item])
         if m is not None:
             url = m.group(1)
@@ -554,7 +554,7 @@ def main(stdscr, calendar):
             else:
                 action = menu.get_action(key)
                 if action is not None:
-                    action(stdscr, selected_item, row, 0, last_row, width-1)
+                    action(selected_item)
 
 if __name__ == "__main__":
     args = get_args()
