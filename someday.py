@@ -521,15 +521,12 @@ def get_args():
     parser.add_argument("--useYMD", action='store_true', default=False)
     return parser.parse_args()
 
-def auto_advance_generator(func):
-    def inner(line=None):
-        gen = func(line)
-        next(gen)
-        return gen
-    return inner
-
-@auto_advance_generator
 def get_input_outside_curses(line=None):
+    gen = _get_input_outside_curses(line)
+    next(gen)
+    return gen
+
+def _get_input_outside_curses(line=None):
     screen.clear()
     screen.refresh()
     termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _shell_tty_settings)
@@ -540,7 +537,7 @@ def get_input_outside_curses(line=None):
         readline.add_history(line)
     _input = line
 
-    _ = (yield)
+    yield
 
     try:
         while True:
