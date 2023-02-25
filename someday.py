@@ -163,7 +163,9 @@ class Calendar:
 
     def is_advanceable(self, selected_item):
         date = self.get_date_part(selected_item)
-        if len(re.findall(r"\bj\b", date)) != 1:
+        if len(re.findall(r"\bj\s*>\s*\d+\b", date)) != 1:
+            return False
+        if len(re.findall(r"\bj\s*[<=]", date)) != 0:
             return False
         tmp = self.parse_expression(date)
         if tmp is None:
