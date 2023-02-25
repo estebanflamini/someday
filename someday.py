@@ -403,8 +403,6 @@ def can_advance(calendar, selected_item):
     date = calendar.get_date_expression(selected_item)
     if len(re.findall(JULIAN_THRESHOLD, date)) != 1:
         return False
-    if len(re.findall(r"\bj\s*[<=]", date)) != 0:
-        return False
     tmp = calendar.parse_expression(date)
     if tmp is None:
         return False
