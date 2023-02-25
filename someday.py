@@ -197,6 +197,16 @@ class Calendar:
             self._calendar_lines.insert(line_number, old_value)
             return False
 
+    def add_source_line(self, what):
+        self._calendar_lines.append(what)
+        try:
+            self.generate_proxy_calendar()
+            self._modified = True
+            return True
+        except Exception:
+            del self._calendar_lines[-1]
+            return False
+
 # A class for browsing the calendar's items
 
 class List:
@@ -422,6 +432,12 @@ def _search_j(expr):
     else:
         return False
 
+def duplicate(calendar, selected_item):
+    date = calendar.get_date_expression(selected_item).strip()
+    what = calendar.get_event(selected_item).strip()
+    new_line = "%s , [+] %s" % (date, what)
+    calendar.add_source_line(new_line)
+
 URL = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 
 def open_url(calendar, selected_item):
@@ -491,6 +507,7 @@ def recreate_menu(menu, calendar, item_list):
             menu.add(Action("a", "Advance", advance))
         if can_open_url(calendar, selected_item):
             menu.add(Action("b", "Browse url", open_url))
+        menu.add(Action("u", "dUplicate", duplicate))
 
 # This is the main function for browsing and updating the list of items
 
