@@ -87,20 +87,18 @@ class Calendar:
 
     # Utilities on calendar entries
 
-    def get_date_part(self, selected_item):
-        line_number = self._line_numbers[selected_item]
-        line = self._calendar_lines[line_number]
+    def get_date_expression(self, selected_item):
+        line = self.get_source_line(selected_item)
         m = re.match(r"^(.+?)\s*,", line)
         return m.group(1).lstrip() if m else None
 
-    def get_event_part(self, selected_item):
-        line_number = self._line_numbers[selected_item]
-        line = self._calendar_lines[line_number]
+    def get_event(self, selected_item):
+        line = self.get_source_line(selected_item)
         m = re.search(r",\s*(.+?)$", line)
         return m.group(1).rstrip() if m else None
 
-    def is_exact_date(self, selected_item):
-        date = self.get_date_part(selected_item)
+    def happens_only_once(self, selected_item):
+        date = self.get_date_expression(selected_item)
         if date is None: # just in case
             return False
         if self.is_literal(date):
@@ -338,17 +336,17 @@ def delete(calendar, selected_item):
     calendar.update_source_line(selected_item, None)
 
 def can_delete(calendar, selected_item):
-    return calendar.is_exact_date(selected_item)
+    return calendar.happens_only_once(selected_item)
 
 def comment(calendar, selected_item):
     calendar.update_source_line(selected_item, '#' + calendar.get_source_line(selected_item))
 
 def can_comment(calendar, selected_item):
-    return calendar.is_exact_date(selected_item)
+    return calendar.happens_only_once(selected_item)
 
 def reschedule(calendar, selected_item):
-    what = calendar.get_event_part(selected_item)
-    date = calendar.get_date_part(selected_item)
+    what = calendar.get_event(selected_item)
+    date = calendar.get_date_expression(selected_item)
     coro = get_input_outside_curses()
     print("Enter a date as YYYY MM DD or a number to indicate an interval from now.")
     print()
@@ -385,7 +383,7 @@ def reschedule(calendar, selected_item):
     coro.close()
 
 def can_reschedule(calendar, selected_item):
-    return calendar.is_exact_date(selected_item)
+    return calendar.happens_only_once(selected_item)
 
 JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
 DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
@@ -399,7 +397,7 @@ def advance(calendar, selected_item):
     calendar.update_source_line(selected_item, re.sub(JULIAN_THRESHOLD, "j>%s" % date, line))
 
 def can_advance(calendar, selected_item):
-    date = calendar.get_date_part(selected_item)
+    date = calendar.get_date_expression(selected_item)
     if len(re.findall(JULIAN_THRESHOLD, date)) != 1:
         return False
     if len(re.findall(r"\bj\s*[<=]", date)) != 0:
