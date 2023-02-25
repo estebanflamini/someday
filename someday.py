@@ -83,25 +83,25 @@ class Calendar:
 
     # Utilities on calendar entries
 
-    def _get_date_part(self, selected_item):
+    def get_date_part(self, selected_item):
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
         m = re.match(r"^(.+?)\s*,", line)
         return m.group(1).lstrip() if m else None
 
-    def _get_event_part(self, selected_item):
+    def get_event_part(self, selected_item):
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
         m = re.search(r",\s*(.+?)$", line)
         return m.group(1).rstrip() if m else None
 
-    def _is_exact_date(self, selected_item):
-        date = self._get_date_part(selected_item)
+    def is_exact_date(self, selected_item):
+        date = self.get_date_part(selected_item)
         if date is None: # just in case
             return False
-        if self._is_literal(date):
+        if self.is_literal(date):
             return True
-        tmp = self._parse_expression(date)
+        tmp = self.parse_expression(date)
         if tmp is None:
             return False
         if len(tmp) == 3:
@@ -114,18 +114,18 @@ class Calendar:
                     return False
         return False
 
-    def _is_literal(self, text):
+    def is_literal(self, text):
         # Actually, bogus strings such as 'bla bla bla' will pass this test,
         # but we can assume that any string which is passed to this method
         # comes from a valid calendar containing only valid day and month names
-        if self._parse_expression(text) is not None:
+        if self.parse_expression(text) is not None:
             return False
         tmp = text.split()
         if len(tmp) != 3:
             return False
         return "*" not in tmp
 
-    def _parse_expression(self, text):
+    def parse_expression(self, text):
         # Invalid expressions such as 'xx = #$$%' will get parsed by this
         # method, but we can assume that any string which is passed to this
         # method comes from a valid calendar containing only valid expressions
@@ -133,16 +133,16 @@ class Calendar:
         if not self._wellnested(text):
             return None
         if len(text) > 2 and text[0] == "(" and text[-1] == ")":
-            return self._parse_expression(text[1:-1])
+            return self.parse_expression(text[1:-1])
         # Parse operators in reversed order of precedence
         for op in ["|", "&", "!", "=", "!=", "<", ">", "<=", ">=", "-", "%"]:
             if op in text:
                 if op == "!":
-                    tmp = self._parse_expression(text[1:])
+                    tmp = self.parse_expression(text[1:])
                     return [op, tmp] if tmp else None
                 n = text.index(op)
-                tmp1 = self._parse_expression(text[0:n])
-                tmp2 = self._parse_expression(text[n+1:])
+                tmp1 = self.parse_expression(text[0:n])
+                tmp2 = self.parse_expression(text[n+1:])
                 if tmp1 and tmp2:
                     return [op, tmp1, tmp2]
         return text if not " " in text else None
@@ -161,11 +161,11 @@ class Calendar:
                 n -= 1
         return n == 0
 
-    def _is_advanceable(self, selected_item):
-        date = self._get_date_part(selected_item)
+    def is_advanceable(self, selected_item):
+        date = self.get_date_part(selected_item)
         if len(re.findall(r"\bj\b", date)) != 1:
             return False
-        tmp = self._parse_expression(date)
+        tmp = self.parse_expression(date)
         if tmp is None:
             return False
         return self._search_j(tmp)
@@ -202,20 +202,20 @@ class Calendar:
         self._update_calendar_line(line_number, None)
 
     def can_delete(self, selected_item):
-        return self._is_exact_date(selected_item)
+        return self.is_exact_date(selected_item)
 
     def comment(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         line_number = self._line_numbers[selected_item]
         self._update_calendar_line(line_number, '#' + self._calendar_lines[line_number])
 
     def can_comment(self, selected_item):
-        return self._is_exact_date(selected_item)
+        return self.is_exact_date(selected_item)
 
     def reschedule(self, screen, selected_item, minrow, mincol, maxrow, maxcol):
         line_number = self._line_numbers[selected_item]
         line = self._calendar_lines[line_number]
-        what = self._get_event_part(selected_item)
-        date = self._get_date_part(selected_item)
+        what = self.get_event_part(selected_item)
+        date = self.get_date_part(selected_item)
         coro = get_input_outside_curses()
         print("Enter a date as YYYY MM DD or a number to indicate an interval from now.")
         print()
@@ -252,7 +252,7 @@ class Calendar:
         coro.close()
 
     def can_reschedule(self, selected_item):
-        return self._is_exact_date(selected_item)
+        return self.is_exact_date(selected_item)
 
     JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
 
@@ -265,7 +265,7 @@ class Calendar:
     DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
 
     def can_advance(self, selected_item):
-        if self._is_advanceable(selected_item):
+        if self.is_advanceable(selected_item):
             m = re.match(self.DATE_IN_LISTING, self._items[selected_item])
             if m is None:
                 return False
