@@ -63,9 +63,6 @@ class Calendar:
         self._items = [x[0] for x in tmp]
         self._line_numbers = [int(x[1]) for x in tmp]
 
-    def no_items(self):
-        return not self._items
-
     def get_items(self):
         return self._items
 
