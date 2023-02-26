@@ -12,6 +12,7 @@ import argparse
 import termios
 import readline
 import signal
+from time import sleep
 
 # These globals will be populated and used below
 _prog_tty_settings = None
@@ -505,16 +506,16 @@ def new(calendar, selected_item):
                 print()
     coro.close()
 
-URL = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
+URL = r"https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 
 def open_url(calendar, selected_item):
-    m = re.search(URL, calendar.get_item(selected_item))
-    if m is not None:
-        url = m.group(0)
+    urls = re.findall(URL, calendar.get_item(selected_item))
+    for url in urls:
         subprocess.run(["xdg-open", url])
+        sleep(1)
 
 def can_open_url(calendar, selected_item):
-    return re.search("(%s)" % URL, calendar.get_item(selected_item)) is not None
+    return re.search(URL, calendar.get_item(selected_item)) is not None
 
 def get_input_outside_curses(line=None, clear_screen=True):
     gen = _get_input_outside_curses(line, clear_screen)
