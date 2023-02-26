@@ -662,6 +662,8 @@ if __name__ == "__main__":
         calendar.generate_proxy_calendar()
         curses.wrapper(main, calendar)
         calendar.write_calendar()
+    except KeyboardInterrupt:
+        print("Exiting without changes.")
     finally:
         calendar.cleanup_proxy_calendar()
         if args.diff:
