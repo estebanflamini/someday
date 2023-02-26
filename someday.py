@@ -226,28 +226,25 @@ class Calendar:
 # A class for browsing the calendar's items
 
 class List:
-    def __init__(self, calendar, screen, minrow, mincol, maxrow, maxcol):
+    def __init__(self, calendar):
         self._calendar = calendar
-        self._screen = screen
-        self._minrow = minrow
-        self._mincol = mincol
-        self._height = maxrow - minrow + 1
-        self._width = maxcol - mincol + 1
         self._items = []
         self._first_item = 0
         self._selected_row = 0
 
-    def show(self):
+    def show(self, screen, minrow, mincol, maxrow, maxcol):
         self._items = calendar.get_items()
+        self._height = maxrow - minrow + 1
+        width = maxcol - mincol + 1
         if self._items:
             self._adjust_selected_item()
             for i, item in enumerate(self._items[self._first_item:]):
                 if i >= self._height:
                     break
                 color = 2 if i == self._selected_row else 1
-                self._screen.addstr(self._minrow + i, self._mincol, item[:self._width], curses.color_pair(color))
+                screen.addstr(minrow + i, mincol, item[:width], curses.color_pair(color))
         else:
-            self._screen.addstr(self._minrow, self._mincol, "No items were found for today (and surrounding dates).")
+            screen.addstr(minrow, mincol, "No items were found for the specified dates.")
 
     def _adjust_selected_item(self):
         while self._first_item + self._selected_row >= len(self._items):
@@ -279,16 +276,9 @@ class List:
 Action = namedtuple("Action", ["key", "name", "action"])
 
 class Menu:
-    def __init__(self, calendar, item_list, screen, minrow, mincol, maxrow, maxcol):
+    def __init__(self, calendar, item_list):
         self._calendar = calendar
         self._item_list = item_list
-        self._screen = screen
-        self._minrow = minrow
-        self._mincol = mincol
-        self._maxrow = maxrow
-        self._maxcol = maxcol
-        self._height = maxrow - minrow + 1
-        self._width = maxcol - mincol + 1
         self._menu = []
         self._key_bindings =  {}
         self._selected_action = 0
@@ -307,10 +297,11 @@ class Menu:
             else:
                 self._key_bindings[key] = what.action
 
-    def show(self):
+    def show(self, screen, minrow, mincol, maxrow, maxcol):
+        width = maxcol - mincol + 1
         for i, action in enumerate(self._menu):
             color = 2 if i == self._selected_action else 1
-            self._screen.addstr(self._minrow, i * (self._width // len(self._menu)), action.name, curses.color_pair(color))
+            screen.addstr(minrow, i * (width // len(self._menu)), action.name, curses.color_pair(color))
 
     def get_action(self, key):
         if not self._calendar.get_items():
@@ -599,17 +590,11 @@ def main(stdscr, calendar):
 
     _prog_tty_settings = termios.tcgetattr(sys.stdin.fileno())
 
-    # Get the size of the window and define areas for the list of items and menu
-    height, width = stdscr.getmaxyx()
-    first_row = 2
-    last_row = height - 3
-    menu_row = height - 1
-
     # Create an onscreen list for showing the items
-    item_list = List(calendar, stdscr, first_row, 0, last_row, width-1)
+    item_list = List(calendar)
 
     # Generate the menu and key bindings
-    menu = Menu(calendar, item_list, stdscr, menu_row, 0, menu_row, width-1)
+    menu = Menu(calendar, item_list)
 
     try:
         julian_date = get_julian_date()
@@ -621,16 +606,22 @@ def main(stdscr, calendar):
 
         stdscr.clear()
 
+        # Get the size of the window and define areas for the list of items and menu
+        width, height = os.get_terminal_size()
+        first_row = 2
+        last_row = height - 3
+        menu_row = height - 1
+
         # Show the date at top of the screen
 
         stdscr.addstr(0, 0, "%s - Julian date: %s" % (get_date(), julian_date))
 
         # Draw the list of items
-        item_list.show()
+        item_list.show(stdscr, first_row, 0, last_row, width-1)
 
         # Update and draw the menu of actions
         recreate_menu(menu, calendar, item_list)
-        menu.show()
+        menu.show(stdscr, menu_row, 0, menu_row, width-1)
 
         stdscr.refresh()
 
@@ -638,7 +629,9 @@ def main(stdscr, calendar):
         key = stdscr.getch()
 
         # Handle the cursor keys to navigate the list of items and the menu of actions
-        if key == curses.KEY_UP:
+        if key < 0:
+            pass
+        elif key == curses.KEY_UP:
             item_list.up()
         elif key == curses.KEY_DOWN:
             item_list.down()
