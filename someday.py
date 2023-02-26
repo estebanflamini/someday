@@ -340,6 +340,18 @@ def get_julian_date(now=None):
     _julian_dates[now] = j
     return j
 
+def say(what):
+    width = os.get_terminal_size()[0]
+    what = textwrap.wrap(what, width)
+    for line in what:
+        print(line)
+    print()
+
+def my_input():
+    r = input()
+    print()
+    return r
+
 # Actions on the calendar
 
 def edit(calendar, selected_item):
@@ -501,11 +513,6 @@ def get_input_outside_curses(line=None, clear_screen=True):
     next(gen)
     return gen
 
-def my_input():
-    r = input()
-    print()
-    return r
-
 def _get_input_outside_curses(line=None, clear_screen=True):
     if clear_screen:
         screen.clear()
@@ -562,13 +569,6 @@ def recreate_menu(menu, calendar, item_list):
             menu.add(Action("b", "Browse url", open_url))
         menu.add(Action("u", "dUplicate", duplicate))
     menu.add(Action("n", "New", new))
-
-def say(what):
-    width = os.get_terminal_size()[0]
-    what = textwrap.wrap(what, width)
-    for line in what:
-        print(line)
-    print()
 
 # This is the main function for browsing and updating the list of items
 
