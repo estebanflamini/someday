@@ -26,6 +26,7 @@ def get_args():
     parser.add_argument("--past", type=int, default=None)
     parser.add_argument("--future", type=int, default=None)
     parser.add_argument("--useYMD", action='store_true', default=False)
+    parser.add_argument("--diff", action='store_true', default=False)
     return parser.parse_args()
 
 # A class for interacting with the calendar
@@ -41,6 +42,7 @@ class Calendar:
 
         self._line_numbers = []
         self._modified = False
+        self._created_backup = False
 
     def _get_default_calendar(self):
         try:
@@ -96,9 +98,17 @@ class Calendar:
     def write_calendar(self):
         if self._modified:
             copyfile(self._calendar, self._backup_calendar)
+            self._created_backup = True
             with open(self._calendar, "w") as f:
                 for line in self._calendar_lines:
                     print(line, file=f)
+
+    # Show differences between the calendar and the generated backup
+    def diff(self):
+        if self._created_backup:
+            _diff = subprocess.run(["diff", self._calendar, self._backup_calendar], capture_output=True, text=True).stdout
+            if _diff:
+                subprocess.run(["less", "-F"], input=_diff, text=True)
 
     # Utilities on calendar entries
 
@@ -660,3 +670,5 @@ if __name__ == "__main__":
         calendar.write_calendar()
     finally:
         calendar.cleanup_proxy_calendar()
+        if args.diff:
+            calendar.diff()
