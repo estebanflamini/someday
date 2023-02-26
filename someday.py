@@ -347,8 +347,12 @@ def say(what):
         print(line)
     print()
 
-def my_input():
+def my_input(value_to_edit=None):
+    if value_to_edit is not None:
+        readline.set_startup_hook(lambda: readline.insert_text(value_to_edit))
     r = input()
+    if value_to_edit is not None:
+        readline.set_startup_hook()
     print()
     return r
 
