@@ -354,9 +354,7 @@ def edit(calendar, selected_item):
             if calendar.update_source_line(selected_item, _input):
                 break
             else:
-                print()
-                print("It looks you entered a wrong calendar line. Try it again. To leave the item unchanged, use the cursor up key to get the original line and press Enter.")
-                print()
+                say("It looks you entered a wrong calendar line. Try it again. To leave the item unchanged, use the cursor up key to get the original line and press Enter.")
 
 def delete(calendar, selected_item):
     calendar.delete_source_line(selected_item)
@@ -374,13 +372,10 @@ def reschedule(calendar, selected_item):
     what = calendar.get_event(selected_item)
     date = calendar.get_date_expression(selected_item)
     coro = get_input_outside_curses()
-    print("Enter a date as YYYY MM DD or a number (negative, zero, or positive) to indicate that many days from now.")
-    print()
+    say("Enter a date as YYYY MM DD or a number (negative, zero, or positive) to indicate that many days from now.")
     while True:
-        print("Enter a blank line to leave the date unchanged.")
-        print()
-        print(what)
-        print()
+        say("Enter a blank line to leave the date unchanged.")
+        say(what)
         _input = next(coro).strip()
         if not _input:
             break
@@ -394,9 +389,7 @@ def reschedule(calendar, selected_item):
             if calendar.update_source_line(selected_item, "%s , %s" % (date, what)):
                 break
             else:
-                print()
-                print("It looks you entered a wrong date/interval. Try it again.")
-                print()
+                say("It looks you entered a wrong date/interval. Try it again.")
     coro.close()
 
 def can_reschedule(calendar, selected_item):
@@ -410,14 +403,14 @@ def get_interval(text):
     try:
         today = get_julian_date()
     except Exception:
-        print("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
+        say("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
         return None
     delta = int(text)
     if args.useYMD:
         try:
             return subprocess.run(["date", "--date", "%s days" % int(text), "+%Y %m %d"], capture_output=True, text=True, check=True).stdout.strip()
         except Exception:
-            print("There was an error while trying to compute the new date. Enter an exact date instead of an interval.")
+            say("There was an error while trying to compute the new date. Enter an exact date instead of an interval.")
             return None
     else:
         return "j=%s" % (today + delta)
@@ -435,7 +428,7 @@ def advance(calendar, selected_item):
     except Exception:
         screen.clear()
         screen.refresh()
-        print("There has been an error while trying to calculate the advanced date.")
+        say("There has been an error while trying to calculate the advanced date.")
         screen.getch()
         return
     calendar.update_source_line(selected_item, re.sub(JULIAN_THRESHOLD, "j>%s" % date, line))
@@ -465,17 +458,13 @@ def duplicate(calendar, selected_item):
 
 def new(calendar, selected_item):
     coro = get_input_outside_curses()
-    print("What?:")
-    print()
+    say("What?:")
     what = next(coro).strip()
     coro.close()
     coro = get_input_outside_curses(clear_screen=False)
-    print()
     while what:
-        print("When? (Enter a date as YYYY MM DD, a number (negative, zero, or positive) to indicate that many days from now or a valid when\'s expression:")
-        print()
+        say("When? (Enter a date as YYYY MM DD, a number (negative, zero, or positive) to indicate that many days from now or a valid when\'s expression:")
         _input = next(coro).strip()
-        print()
         if not _input:
             break
         else:
@@ -493,8 +482,7 @@ def new(calendar, selected_item):
             if date and calendar.add_source_line("%s , %s" % (date, what)):
                 break
             else:
-                print("It looks you entered a wrong date/interval/expression (or there was an error while trying to calculate the corresponding julian date). Try it again.")
-                print()
+                say("It looks you entered a wrong date/interval/expression (or there was an error while trying to calculate the corresponding julian date). Try it again.")
     coro.close()
 
 URL = r"https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
@@ -512,6 +500,11 @@ def get_input_outside_curses(line=None, clear_screen=True):
     gen = _get_input_outside_curses(line, clear_screen)
     next(gen)
     return gen
+
+def my_input():
+    r = input()
+    print()
+    return r
 
 def _get_input_outside_curses(line=None, clear_screen=True):
     if clear_screen:
@@ -531,7 +524,7 @@ def _get_input_outside_curses(line=None, clear_screen=True):
         while True:
             if _input is not None:
                 readline.set_startup_hook(lambda: readline.insert_text(_input))
-            _input = input()
+            _input = my_input()
             readline.set_startup_hook()
             yield _input
     finally:
@@ -569,6 +562,13 @@ def recreate_menu(menu, calendar, item_list):
             menu.add(Action("b", "Browse url", open_url))
         menu.add(Action("u", "dUplicate", duplicate))
     menu.add(Action("n", "New", new))
+
+def say(what):
+    width = os.get_terminal_size()[0]
+    what = textwrap.wrap(what, width)
+    for line in what:
+        print(line)
+    print()
 
 # This is the main function for browsing and updating the list of items
 
