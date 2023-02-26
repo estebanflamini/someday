@@ -13,31 +13,26 @@ import termios
 import readline
 import signal
 
-def get_args():
-    parser = argparse.ArgumentParser(prog="someday")
-    parser.add_argument("--past", type=int, default=None)
-    parser.add_argument("--future", type=int, default=None)
-    parser.add_argument("--useYMD", action='store_true', default=False)
-    return parser.parse_args()
-
 # These globals will be populated and used below
 _prog_tty_settings = None
 _shell_tty_settings = None
 _shell_cursor = None
 screen = None
+args = None
+
+def get_args():
+    parser = argparse.ArgumentParser(prog="someday")
+    parser.add_argument("--calendar", type=str, default=None)
+    parser.add_argument("--past", type=int, default=None)
+    parser.add_argument("--future", type=int, default=None)
+    parser.add_argument("--useYMD", action='store_true', default=False)
+    return parser.parse_args()
 
 # A class for interacting with the calendar
 
 class Calendar:
     def __init__(self):
-        try:
-            with open("%s/.when/preferences" % os.environ["HOME"]) as f:
-                prefs = f.read()
-            m = re.match(r"^\s*calendar\s*=\s*(.+)$", prefs, flags=re.MULTILINE)
-            self._calendar = m.group(1).strip()
-        except Exception:
-            sys.exit("No calendar configuration for 'when' was found.")
-
+        self._calendar = args.calendar or self._get_default_calendar()
         self._proxy_calendar = self._calendar + ".SOMEDAY"
 
         with open(self._calendar) as infile:
@@ -45,6 +40,15 @@ class Calendar:
 
         self._line_numbers = []
         self._modified = False
+
+    def _get_default_calendar(self):
+        try:
+            with open("%s/.when/preferences" % os.environ["HOME"]) as f:
+                prefs = f.read()
+            m = re.match(r"^\s*calendar\s*=\s*(.+)$", prefs, flags=re.MULTILINE)
+            return m.group(1).strip()
+        except Exception:
+            sys.exit("No calendar configuration for 'when' was found.")
 
     def check_no_proxy_calendar_exists(self):
         if os.path.exists(self._proxy_calendar):
