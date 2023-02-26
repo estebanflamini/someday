@@ -34,6 +34,7 @@ class Calendar:
     def __init__(self):
         self._calendar = args.calendar or self._get_default_calendar()
         self._proxy_calendar = self._calendar + ".SOMEDAY"
+        self._backup_calendar = self._calendar + ".SOMEDAY.BAK"
 
         with open(self._calendar) as infile:
             self._calendar_lines = infile.read().splitlines()
@@ -94,7 +95,7 @@ class Calendar:
 
     def write_calendar(self):
         if self._modified:
-            copyfile(self._calendar, self._calendar + ".SOMEDAY.BAK")
+            copyfile(self._calendar, self._backup_calendar)
             with open(self._calendar, "w") as f:
                 for line in self._calendar_lines:
                     print(line, file=f)
