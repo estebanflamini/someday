@@ -11,7 +11,6 @@ from shutil import copyfile
 import argparse
 import termios
 import readline
-import signal
 from time import sleep
 
 # These globals will be populated and used below
@@ -363,12 +362,12 @@ def outside_curses(func):
         screen.refresh()
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _shell_tty_settings)
         curses.curs_set(_shell_cursor)
-        old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
         readline.clear_history()
         try:
             func(*args, **kwargs)
+        except KeyboardInterrupt:
+            pass
         finally:
-            signal.signal(signal.SIGINT, old_handler)
             termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
             curses.curs_set(0)
     return wrapped
