@@ -377,8 +377,9 @@ def outside_curses(func):
 @outside_curses
 def edit(calendar, selected_item):
     line = calendar.get_source_line(selected_item)
+    _input = line
     while True:
-        _input = my_input(line).strip()
+        _input = my_input(_input).strip()
         if _input == line:
             break
         else:
@@ -403,11 +404,12 @@ def can_comment(calendar, selected_item):
 def reschedule(calendar, selected_item):
     what = calendar.get_event(selected_item)
     date = calendar.get_date_expression(selected_item)
+    _input = None
     while True:
         say("Enter a date as YYYY MM DD or a number (negative, zero, or positive) to indicate that many days from now.")
         say("Enter a blank line to leave the date unchanged.")
         say(what)
-        _input = my_input().strip()
+        _input = my_input(_input).strip()
         if not _input:
             break
         else:
@@ -490,9 +492,10 @@ def duplicate(calendar, selected_item):
 def new(calendar, selected_item):
     say("What?:")
     what = my_input().strip()
+    _input = None
     while what:
         say("When? (Enter a date as YYYY MM DD, a number (negative, zero, or positive) to indicate that many days from now or a valid when\'s expression:")
-        _input = my_input().strip()
+        _input = my_input(_input).strip()
         if not _input:
             break
         else:
