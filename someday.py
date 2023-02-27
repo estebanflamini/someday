@@ -356,15 +356,31 @@ def my_input(value_to_edit=None):
     print()
     return r
 
+# A decorator for functions that need to run outside curses
+def outside_curses(func):
+    def wrapped(*args, **kwargs):
+        screen.clear()
+        screen.refresh()
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _shell_tty_settings)
+        curses.curs_set(_shell_cursor)
+        old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        readline.clear_history()
+        try:
+            func(*args, **kwargs)
+        finally:
+            signal.signal(signal.SIGINT, old_handler)
+            termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
+            curses.curs_set(0)
+    return wrapped
+
 # Actions on the calendar
 
+@outside_curses
 def edit(calendar, selected_item):
     line = calendar.get_source_line(selected_item)
-    coro = get_input_outside_curses(line)
     while True:
-        _input = next(coro).strip()
+        _input = my_input(line).strip()
         if _input == line:
-            coro.close()
             break
         else:
             if calendar.update_source_line(selected_item, _input):
@@ -384,15 +400,15 @@ def comment(calendar, selected_item):
 def can_comment(calendar, selected_item):
     return calendar.happens_only_once(selected_item)
 
+@outside_curses
 def reschedule(calendar, selected_item):
     what = calendar.get_event(selected_item)
     date = calendar.get_date_expression(selected_item)
-    coro = get_input_outside_curses()
-    say("Enter a date as YYYY MM DD or a number (negative, zero, or positive) to indicate that many days from now.")
     while True:
+        say("Enter a date as YYYY MM DD or a number (negative, zero, or positive) to indicate that many days from now.")
         say("Enter a blank line to leave the date unchanged.")
         say(what)
-        _input = next(coro).strip()
+        _input = my_input().strip()
         if not _input:
             break
         else:
@@ -406,7 +422,6 @@ def reschedule(calendar, selected_item):
                 break
             else:
                 say("It looks you entered a wrong date/interval. Try it again.")
-    coro.close()
 
 def can_reschedule(calendar, selected_item):
     return calendar.happens_only_once(selected_item)
@@ -472,15 +487,13 @@ def duplicate(calendar, selected_item):
     new_line = "%s , [+] %s" % (date, what)
     calendar.add_source_line(new_line)
 
+@outside_curses
 def new(calendar, selected_item):
-    coro = get_input_outside_curses()
     say("What?:")
-    what = next(coro).strip()
-    coro.close()
-    coro = get_input_outside_curses(clear_screen=False)
+    what = my_input().strip()
     while what:
         say("When? (Enter a date as YYYY MM DD, a number (negative, zero, or positive) to indicate that many days from now or a valid when\'s expression:")
-        _input = next(coro).strip()
+        _input = my_input().strip()
         if not _input:
             break
         else:
@@ -499,7 +512,6 @@ def new(calendar, selected_item):
                 break
             else:
                 say("It looks you entered a wrong date/interval/expression (or there was an error while trying to calculate the corresponding julian date). Try it again.")
-    coro.close()
 
 URL = r"https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 
@@ -511,37 +523,6 @@ def open_url(calendar, selected_item):
 
 def can_open_url(calendar, selected_item):
     return re.search(URL, calendar.get_item(selected_item)) is not None
-
-def get_input_outside_curses(line=None, clear_screen=True):
-    gen = _get_input_outside_curses(line, clear_screen)
-    next(gen)
-    return gen
-
-def _get_input_outside_curses(line=None, clear_screen=True):
-    if clear_screen:
-        screen.clear()
-        screen.refresh()
-    termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _shell_tty_settings)
-    curses.curs_set(_shell_cursor)
-    old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-    readline.clear_history()
-    if line is not None:
-        readline.add_history(line)
-    _input = line
-
-    yield
-
-    try:
-        while True:
-            if _input is not None:
-                readline.set_startup_hook(lambda: readline.insert_text(_input))
-            _input = my_input()
-            readline.set_startup_hook()
-            yield _input
-    finally:
-        signal.signal(signal.SIGINT, old_handler)
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
-        curses.curs_set(0)
 
 def expand(item, minrow, mincol, maxrow, maxcol):
     minrow -= 1
