@@ -257,6 +257,10 @@ class List:
         while self._first_item + self._selected_row >= len(self._items):
             self.up()
 
+    def top(self):
+        self._selected_row = 0
+        self._first_item = 0
+
     def up(self):
         if self._selected_row > 0:
             self._selected_row -= 1
@@ -381,9 +385,9 @@ def outside_curses(func):
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _shell_tty_settings)
         curses.curs_set(_shell_cursor)
         try:
-            func(*args, **kwargs)
+            return func(*args, **kwargs)
         except KeyboardInterrupt:
-            pass
+            return None
         finally:
             termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
             curses.curs_set(0)
@@ -556,6 +560,52 @@ def expand(item, minrow, mincol, maxrow, maxcol):
     pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
     pad.getch()
 
+def choose_view_mode(calendar, item_list):
+    modes = []
+    modes.append(("Use when’s defaults", lambda: View(None, None, None)))
+    modes.append(("Enter a date range", lambda: enter_date_range()))
+    _args = "%s %s %s" % ("--past=%s " % args.past if args.past else "", "--future=%s " % args.future if args.future else "", "")
+    _args = _args.strip()
+    if _args:
+        modes.append(("Use given arguments: %s" % _args, lambda: View(args.past, args.future, None)))
+    screen.clear()
+    screen.refresh()
+    screen.addstr(0, 0, "Choose a view mode:")
+    i = 0
+    row = 2
+    for mode in modes:
+        screen.addstr(row, 0, "%s: %s" % (i+1, modes[i][0]))
+        i += 1
+        row += 1
+    screen.addstr(row, 0, "0: Back")
+    while True:
+        key = curses.keyname(screen.getch())
+        if not key.isdigit():
+            continue
+        if key == "0":
+            break
+        i = int(key)-1
+        if i >= len(modes):
+            continue
+        mode = modes[i][1]()
+        if mode is not None:
+            calendar.set_view_mode(mode)
+            calendar.generate_proxy_calendar()
+            item_list.top()
+            break
+
+@outside_curses
+def enter_date_range():
+    say("From date:")
+    _from = my_input()
+    if _from is None:
+        return None
+    say("To date:")
+    _to = my_input()
+    if _to is None:
+        return None
+    return View(_from, _to, None)
+
 def recreate_menu(menu, calendar, item_list):
     menu.clear()
     if calendar.get_items():
@@ -573,6 +623,7 @@ def recreate_menu(menu, calendar, item_list):
             menu.add(Action("b", "Browse url", open_url))
         menu.add(Action("u", "dUplicate", duplicate))
     menu.add(Action("n", "New", new))
+    menu.add(Action("v", "View", choose_view_mode))
 
 # This is the main function for browsing and updating the list of items
 
@@ -654,7 +705,10 @@ def main(stdscr, calendar):
             else:
                 action = menu.get_action(key)
                 if action is not None:
-                    action(calendar, selected_item)
+                    if action is choose_view_mode:
+                        action(calendar, item_list)
+                    else:
+                        action(calendar, selected_item)
 
 if __name__ == "__main__":
     args = get_args()
