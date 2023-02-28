@@ -304,6 +304,7 @@ class Menu:
     def clear(self):
         self._menu = []
         self._key_bindings = {}
+        self._selected_action = 0
 
     def add(self, what):
         self._menu.append(what)
@@ -322,9 +323,7 @@ class Menu:
             screen.addstr(minrow, i * (width // len(self._menu)), action.name, curses.color_pair(color))
 
     def get_action(self, key):
-        if not self._calendar.get_items():
-            return None
-        elif key == 32:
+        if key == 32:
             return self._menu[self._selected_action].action
         elif key in self._key_bindings:
             return self._key_bindings[key]
