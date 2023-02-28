@@ -591,13 +591,12 @@ def choose_view_mode(calendar, item_list):
         if key == "0":
             break
         i = int(key)-1
-        if i >= len(modes):
-            continue
-        mode = modes[i][1]()
-        if mode is not None:
-            calendar.set_view_mode(mode)
-            calendar.generate_proxy_calendar()
-            item_list.top()
+        if i < len(modes):
+            mode = modes[i][1]()
+            if mode is not None:
+                calendar.set_view_mode(mode)
+                calendar.generate_proxy_calendar()
+                item_list.top()
             break
 
 @outside_curses
