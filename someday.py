@@ -304,7 +304,6 @@ class Menu:
     def clear(self):
         self._menu = []
         self._key_bindings = {}
-        self._selected_action = 0
 
     def add(self, what):
         self._menu.append(what)
@@ -317,6 +316,7 @@ class Menu:
                 self._key_bindings[key] = what.action
 
     def show(self, screen, minrow, mincol, maxrow, maxcol):
+        self._selected_action = min(self._selected_action, len(self._menu) - 1)
         width = maxcol - mincol + 1
         for i, action in enumerate(self._menu):
             color = 2 if i == self._selected_action else 1
@@ -653,7 +653,7 @@ def main(stdscr, calendar):
     # Create an onscreen list for showing the items
     item_list = List(calendar)
 
-    # Generate the menu and key bindings
+    # Create an object to store the menu and key bindings
     menu = Menu(calendar, item_list)
 
     try:
