@@ -346,19 +346,24 @@ def say(what):
         print(line)
     print()
 
+# An utility function that extends input() to allow passing an initial value to
+# be edited
 def my_input(value_to_edit=None):
     if value_to_edit is not None:
         readline.set_startup_hook(lambda: readline.insert_text(value_to_edit))
+        n = readline.get_current_history_length()
+        if n == 0 or readline.get_history_item(n) != value_to_edit:
+            # This is to ensure the initial value is in the history
+            readline.add_history(value_to_edit)
+        else:
+            # This is to avoid having to press the up key twice to get to the
+            # previous (different) value in history
+            readline.remove_history_item(n-1)
     r = input()
     if value_to_edit is not None:
         readline.set_startup_hook()
     print()
     return r
-
-def reject_input(message):
-    n = readline.get_current_history_length()-1
-    readline.remove_history_item(n)
-    say(message)
 
 # A decorator for functions that need to run outside curses
 def outside_curses(func):
@@ -382,7 +387,6 @@ def outside_curses(func):
 def edit(calendar, selected_item):
     line = calendar.get_source_line(selected_item)
     _input = line
-    readline.add_history(line)
     while True:
         _input = my_input(_input).strip()
         if _input == line:
@@ -391,7 +395,7 @@ def edit(calendar, selected_item):
             if calendar.update_source_line(selected_item, _input):
                 break
             else:
-                reject_input("It looks you entered a wrong calendar line. Try it again. To leave the item unchanged, use the cursor up key to get the original line and press Enter.")
+                say("It looks you entered a wrong calendar line. Try it again. To leave the item unchanged, use the cursor up key to get the original line and press Enter.")
 
 def delete(calendar, selected_item):
     calendar.delete_source_line(selected_item)
@@ -427,7 +431,7 @@ def reschedule(calendar, selected_item):
             if calendar.update_source_line(selected_item, "%s , %s" % (date, what)):
                 break
             else:
-                reject_input("It looks you entered a wrong date/interval. Try it again.")
+                say("It looks you entered a wrong date/interval. Try it again.")
 
 def can_reschedule(calendar, selected_item):
     return calendar.happens_only_once(selected_item)
@@ -518,7 +522,7 @@ def new(calendar, selected_item):
             if date and calendar.add_source_line("%s , %s" % (date, what)):
                 break
             else:
-                reject_input("It looks you entered a wrong date/interval/expression (or there was an error while trying to calculate the corresponding julian date). Try it again.")
+                say("It looks you entered a wrong date/interval/expression (or there was an error while trying to calculate the corresponding julian date). Try it again.")
 
 URL = r"https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 
