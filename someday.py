@@ -31,6 +31,8 @@ def get_args():
 
 # A class for interacting with the calendar
 
+View = namedtuple("View", ["past", "future", "search"])
+
 class Calendar:
     def __init__(self):
         self._calendar = args.calendar or self._get_default_calendar()
@@ -43,6 +45,8 @@ class Calendar:
         self._line_numbers = []
         self._modified = False
         self._created_backup = False
+
+        self._view_mode = View(args.past, args.future, None)
 
     def _get_default_calendar(self):
         try:
@@ -60,6 +64,9 @@ class Calendar:
     def cleanup_proxy_calendar(self):
         os.unlink(self._proxy_calendar)
 
+    def set_view_mode(self, mode):
+        self._view_mode = mode
+
     # Copy the when's calendary to a temporary file where each non-empty line is line-numbered, and get upcoming items from there
 
     def generate_proxy_calendar(self):
@@ -71,10 +78,11 @@ class Calendar:
                 i += 1
 
         d = ["when", "--calendar=%s" % self._proxy_calendar, "--noheader", "--wrap=0"]
-        if args.past is not None:
-            d.append("--past=%s" % args.past)
-        if args.future is not None:
-            d.append("--future=%s" % args.future)
+
+        if self._view_mode.past is not None:
+            d.append("--past=%s" % self._view_mode.past)
+        if self._view_mode.future is not None:
+            d.append("--future=%s" % self._view_mode.future)
 
         tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout
         if tmp.startswith("*"):
