@@ -243,8 +243,8 @@ class List:
         self._items = calendar.get_items()
         self._height = maxrow - minrow + 1
         width = maxcol - mincol + 1
+        self._adjust_selected_item()
         if self._items:
-            self._adjust_selected_item()
             for i, item in enumerate(self._items[self._first_item:]):
                 if i >= self._height:
                     break
@@ -254,21 +254,28 @@ class List:
             screen.addstr(minrow, mincol, "No items were found for the specified dates.")
 
     def _adjust_selected_item(self):
-        while self._first_item + self._selected_row >= len(self._items):
-            self.up()
+        if self._items:
+            while self._first_item + self._selected_row >= len(self._items):
+                self.up()
+        else:
+            self.top()
 
     def top(self):
         self._selected_row = 0
         self._first_item = 0
 
     def up(self):
-        if self._selected_row > 0:
+        if not self._items:
+            return
+        elif self._selected_row > 0:
             self._selected_row -= 1
         elif self._first_item > 0:
             self._first_item -= 1
 
     def down(self):
-        if self._first_item + self._selected_row < len(self._items) - 1:
+        if not self._items:
+            return
+        elif self._first_item + self._selected_row < len(self._items) - 1:
           if self._selected_row < self._height - 1:
             self._selected_row += 1
           else:
