@@ -516,7 +516,7 @@ def duplicate(calendar, selected_item):
     calendar.add_source_line(new_line)
 
 @outside_curses
-def new(calendar, selected_item):
+def new():
     say("What?:")
     what = my_input().strip()
     _input = None
@@ -703,18 +703,21 @@ def main(stdscr, calendar):
         elif chr(key).lower() == 'q':
             break
         else:
-            selected_item = item_list.selected_item()
-            item = calendar.get_item(selected_item)
-            row = first_row + item_list.selected_row()
-            if key == 10:
-                expand(item, row, 0, last_row, width-1)
-            else:
-                action = menu.get_action(key)
-                if action is not None:
-                    if action is choose_view_mode:
-                        action(calendar, item_list)
-                    else:
-                        action(calendar, selected_item)
+            action = expand if key == 10 else menu.get_action(key)
+            if action is None:
+                pass
+            elif action is choose_view_mode:
+                 action(calendar, item_list)
+            elif action is new:
+                action()
+            elif calendar.get_items():
+                selected_item = item_list.selected_item()
+                item = calendar.get_item(selected_item)
+                row = first_row + item_list.selected_row()
+                if action is expand:
+                    action(item, row, 0, last_row, width-1)
+                else:
+                    action(calendar, selected_item)
 
 if __name__ == "__main__":
     args = get_args()
