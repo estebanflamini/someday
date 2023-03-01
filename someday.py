@@ -297,11 +297,15 @@ class Menu:
     def __init__(self):
         self._menu = []
         self._key_bindings =  {}
-        self._selected_action = 0
+        self._selected_index = None
+        self._selected_menu_item = None
 
+    # Delete the menu, but keeps the last defined _selected_menu_item, to be
+    # used by _adjust_selected_item(), below.
     def clear(self):
         self._menu = []
-        self._key_bindings = {}
+        self._key_bindings =  {}
+        self._selected_index = None
 
     def add(self, what):
         self._menu.append(what)
@@ -314,27 +318,45 @@ class Menu:
                 self._key_bindings[key] = what.action
 
     def show(self, screen, minrow, mincol, maxrow, maxcol):
-        self._selected_action = min(self._selected_action, len(self._menu) - 1)
+        if not self._menu:
+            return
+        self._adjust_selected_item()
         width = maxcol - mincol + 1
-        for i, action in enumerate(self._menu):
-            color = 2 if i == self._selected_action else 1
-            screen.addstr(minrow, i * (width // len(self._menu)), action.name, curses.color_pair(color))
+        for i, item in enumerate(self._menu):
+            color = 2 if self._selected_index == i else 1
+            screen.addstr(minrow, i * (width // len(self._menu)), item.name, curses.color_pair(color))
+
+    # This method seeks compliance with the 'principle of least surprise':
+    # when the menu is recreated by recreate_menu() below, as a result of
+    # selecting another calendar entry, we try to maintain the selection on the
+    # same menu entry that was selected before (as identified by name), if it
+    # still exists; otherwise, we reset the pointer to the first menu entry.
+    def _adjust_selected_item(self):
+        self._selected_index = 0
+        if self._selected_menu_item:
+            for i, item in enumerate(self._menu):
+                if item.name == self._selected_menu_item.name:
+                    self._selected_index = i
+                    return
+        self._selected_menu_item = self._menu[self._selected_index]
 
     def get_action(self, key):
         if key == 32:
-            return self._menu[self._selected_action].action
+            return self._selected_menu_item.action
         elif key in self._key_bindings:
             return self._key_bindings[key]
         else:
             return None
 
     def left(self):
-        if self._selected_action > 0:
-            self._selected_action -= 1
+        if self._selected_index > 0:
+            self._selected_index -= 1
+        self._selected_menu_item = self._menu[self._selected_index]
 
     def right(self):
-        if self._selected_action < len(self._menu) - 1:
-            self._selected_action += 1
+        if self._selected_index < len(self._menu) - 1:
+            self._selected_index += 1
+        self._selected_menu_item = self._menu[self._selected_index]
 
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True, text=True).stdout.strip()
