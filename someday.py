@@ -405,7 +405,6 @@ def my_input(value_to_edit=None):
         if value_to_edit is not None:
             readline.set_startup_hook()
         print()
-        return None
 
 # A decorator for functions that need to run outside curses
 def outside_curses(func):
