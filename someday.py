@@ -631,7 +631,8 @@ def expand(item, minrow, mincol, maxrow, maxcol):
 def choose_view_mode(calendar, item_list):
     modes = []
     modes.append(("Use when’s defaults", lambda: View(None, None, None)))
-    modes.append(("Enter a date range", lambda: enter_date_range()))
+    modes.append(("Enter a date range", lambda: create_view(False)))
+    modes.append(("Search a string", lambda: create_view()))
     _args = "%s %s %s" % ("--past=%s " % args.past if args.past else "", "--future=%s " % args.future if args.future else "", "")
     _args = _args.strip()
     if _args:
@@ -662,7 +663,14 @@ def choose_view_mode(calendar, item_list):
             break
 
 @outside_curses
-def enter_date_range():
+def create_view(include_search=True):
+    if include_search:
+        say("Search what:")
+        _what = my_input()
+        if not _what:
+            return None
+    else:
+        _what = None
     say("From date:")
     _from = my_input()
     if not _from:
@@ -671,7 +679,7 @@ def enter_date_range():
     _to = my_input()
     if not _to:
         return None
-    return View(_from, _to, None)
+    return View(_from, _to, _what)
 
 def recreate_menu(menu, calendar, item_list):
     menu.clear()
