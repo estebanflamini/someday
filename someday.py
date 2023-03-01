@@ -25,6 +25,7 @@ def get_args():
     parser.add_argument("--calendar", type=str, default=None)
     parser.add_argument("--past", type=int, default=None)
     parser.add_argument("--future", type=int, default=None)
+    parser.add_argument("--search", type=str, default=None)
     parser.add_argument("--useYMD", action='store_true', default=False)
     parser.add_argument("--diff", action='store_true', default=False)
     return parser.parse_args()
@@ -87,9 +88,20 @@ class Calendar:
         tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout
         if tmp.startswith("*"):
             raise Exception("Invalid expression in calendar.")
+        if args.search is not None:
+            tmp = tmp.splitlines()
+            tmp = list(filter(lambda x: self._search(x, args.search), tmp))
+            tmp = "\n".join(tmp)
         tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
         self._items = [x[0] for x in tmp]
         self._line_numbers = [int(x[1]) for x in tmp]
+
+    def _search(self, item, text):
+        try:
+            m = re.match(r"^\s*(?:\S+\s+){4}(.+?)-\d+$", item)
+            return text in m.group(1)
+        except:
+            sys.exit("Internal error: could not process the output of when")
 
     def get_items(self):
         return self._items
@@ -773,7 +785,7 @@ if __name__ == "__main__":
     calendar = Calendar()
     # The following line will call sys.exit(...) if the proxy calendar already existed. That is why it goes uncatched, so we don't cleanup the calendar if we didn't create it
     calendar.check_no_proxy_calendar_exists()
-    calendar.set_view_mode(View(args.past, args.future, None))
+    calendar.set_view_mode(View(args.past, args.future, args.search))
     _shell_tty_settings = termios.tcgetattr(sys.stdin.fileno())
     try:
         calendar.generate_proxy_calendar()
