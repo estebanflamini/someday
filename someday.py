@@ -88,9 +88,9 @@ class Calendar:
         tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout
         if tmp.startswith("*"):
             raise Exception("Invalid expression in calendar.")
-        if args.search is not None:
+        if self._view_mode.search is not None:
             tmp = tmp.splitlines()
-            tmp = list(filter(lambda x: self._search(x, args.search), tmp))
+            tmp = list(filter(lambda x: self._search(x, self._view_mode.search), tmp))
             tmp = "\n".join(tmp)
         tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
         self._items = [x[0] for x in tmp]
