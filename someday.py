@@ -755,6 +755,9 @@ def main(stdscr, calendar):
 
         stdscr.refresh()
 
+        # Flush the input stream
+        curses.flushinp()
+
         # Get the key input
         key = stdscr.getch()
 
