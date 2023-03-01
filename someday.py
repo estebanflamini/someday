@@ -397,11 +397,15 @@ def my_input(value_to_edit=None):
             # This is to avoid having to press the up key twice to get to the
             # previous (different) value in history
             readline.remove_history_item(n-1)
-    r = input()
-    if value_to_edit is not None:
-        readline.set_startup_hook()
-    print()
-    return r
+    try:
+        return input().strip()
+    except KeyboardInterrupt:
+        return None
+    finally:
+        if value_to_edit is not None:
+            readline.set_startup_hook()
+        print()
+        return None
 
 # A decorator for functions that need to run outside curses
 def outside_curses(func):
@@ -412,8 +416,6 @@ def outside_curses(func):
         curses.curs_set(_shell_cursor)
         try:
             return func(*args, **kwargs)
-        except KeyboardInterrupt:
-            return None
         finally:
             termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, _prog_tty_settings)
             curses.curs_set(0)
@@ -426,8 +428,8 @@ def edit(calendar, selected_item):
     line = calendar.get_source_line(selected_item)
     _input = line
     while True:
-        _input = my_input(_input).strip()
-        if _input == line:
+        _input = my_input(_input)
+        if _input is None or _input == line:
             break
         else:
             if calendar.update_source_line(selected_item, _input):
@@ -456,7 +458,7 @@ def reschedule(calendar, selected_item):
         say("Enter a date as YYYY MM DD or a number (negative, zero, or positive) to indicate that many days from now.")
         say("Enter a blank line to leave the date unchanged.")
         say(what)
-        _input = my_input(_input).strip()
+        _input = my_input(_input)
         if not _input:
             break
         else:
@@ -538,11 +540,11 @@ def duplicate(calendar, selected_item):
 @outside_curses
 def new():
     say("What?:")
-    what = my_input().strip()
+    what = my_input()
     _input = None
     while what:
         say("When? (Enter a date as YYYY MM DD, a number (negative, zero, or positive) to indicate that many days from now or a valid when\'s expression:")
-        _input = my_input(_input).strip()
+        _input = my_input(_input)
         if not _input:
             break
         else:
@@ -623,11 +625,11 @@ def choose_view_mode(calendar, item_list):
 def enter_date_range():
     say("From date:")
     _from = my_input()
-    if _from is None:
+    if not _from:
         return None
     say("To date:")
     _to = my_input()
-    if _to is None:
+    if not _to:
         return None
     return View(_from, _to, None)
 
