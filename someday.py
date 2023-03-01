@@ -603,14 +603,14 @@ def choose_view_mode(calendar, item_list):
         screen.addstr(row, 0, "%s: %s" % (i+1, modes[i][0]))
         i += 1
         row += 1
-    screen.addstr(row, 0, "0: Back")
+    screen.addstr(row, 0, "q: Back")
     while True:
-        key = curses.keyname(screen.getch())
-        if not key.isdigit():
-            continue
-        if key == "0":
+        key = screen.getkey()
+        if key.lower() == "q":
             break
-        i = int(key)-1
+        elif not key.isdigit():
+            continue
+        i = int(key) - 1
         if i < len(modes):
             mode = modes[i][1]()
             if mode is not None:
