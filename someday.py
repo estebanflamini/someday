@@ -197,9 +197,12 @@ class Calendar:
         return n == 0
 
     def update_source_line(self, index, what):
+        what = str(what).strip()
+        if not what:
+            return self.delete_source_line(index)
         line_number = self._line_numbers[index]
         old_value = self._calendar_lines[line_number]
-        self._calendar_lines[line_number] = str(what).strip()
+        self._calendar_lines[line_number] = what
         try:
             self.generate_proxy_calendar()
             self._modified = True
