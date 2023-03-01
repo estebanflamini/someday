@@ -294,9 +294,7 @@ class List:
 Action = namedtuple("Action", ["key", "name", "action"])
 
 class Menu:
-    def __init__(self, calendar, item_list):
-        self._calendar = calendar
-        self._item_list = item_list
+    def __init__(self):
         self._menu = []
         self._key_bindings =  {}
         self._selected_action = 0
@@ -654,7 +652,7 @@ def main(stdscr, calendar):
     item_list = List(calendar)
 
     # Create an object to store the menu and key bindings
-    menu = Menu(calendar, item_list)
+    menu = Menu()
 
     try:
         julian_date = get_julian_date()
