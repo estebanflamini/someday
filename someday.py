@@ -497,39 +497,65 @@ def get_interval(text):
         return "j=%s" % (today + delta)
 
 JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
+YEARLY_THRESHOLD = r"\by\s*>\s*(\d+)\b"
 DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
+YEAR_IN_LISTING = r"^\S+\s+(\d+)"
 
 def advance(calendar, selected_item):
-    line = calendar.get_source_line(selected_item)
-    m = re.match(DATE_IN_LISTING, calendar.get_item(selected_item))
-    if m is None: # Just in case
+    item = calendar.get_item(selected_item)
+    date = calendar.get_date_expression(selected_item)
+    variable_to_replace = _variable_to_replace(date)
+    if variable_to_replace is None:
         return
+    line = calendar.get_source_line(selected_item)
     try:
-        date = get_julian_date(m.group(1))
+        if variable_to_replace == "j":
+            m = re.match(DATE_IN_LISTING, item)
+            regex = JULIAN_THRESHOLD
+            repl = get_julian_date(m.group(1))
+        else:
+            m = re.match(YEAR_IN_LISTING, item)
+            regex = YEARLY_THRESHOLD
+            repl = m.group(1)
     except Exception:
         screen.clear()
         screen.refresh()
         say("There has been an error while trying to calculate the advanced date.")
         screen.getch()
         return
-    calendar.update_source_line(selected_item, re.sub(JULIAN_THRESHOLD, "j>%s" % date, line))
+    calendar.update_source_line(selected_item, re.sub(regex, "%s>%s" % (variable_to_replace, repl), line))
 
 def can_advance(calendar, selected_item):
     date = calendar.get_date_expression(selected_item)
-    if len(re.findall(JULIAN_THRESHOLD, date)) != 1:
+    variable_to_replace = _variable_to_replace(date)
+    if variable_to_replace is None:
         return False
     tmp = calendar.parse_expression(date)
     if tmp is None:
         return False
-    return _search_j(tmp)
+    return _search_var(tmp, variable_to_replace)
 
-def _search_j(expr):
-    if len(expr) == 3 and expr[0] == ">" and expr[1] == "j" and expr[2].isdigit():
+def _search_var(expr, var):
+    if len(expr) == 3 and expr[0] == ">" and expr[1] == var and expr[2].isdigit():
         return True
     elif expr[0] == "&":
-        return _search_j(expr[1]) or _search_j(expr[2])
+        return _search_var(expr[1], var) or _search_var(expr[2], var)
     else:
         return False
+
+def _has_julian_threshold(date):
+    return len(re.findall(JULIAN_THRESHOLD, date)) == 1
+
+def _has_yearly_threshold(date):
+    return len(re.findall(YEARLY_THRESHOLD, date)) == 1
+
+def _variable_to_replace(date):
+    if _has_julian_threshold(date):
+        return "j"
+    elif _has_yearly_threshold(date):
+        return "y"
+    else:
+        return None
 
 def duplicate(calendar, selected_item):
     date = calendar.get_date_expression(selected_item).strip()
