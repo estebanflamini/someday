@@ -46,7 +46,7 @@ class Calendar:
         self._modified = False
         self._created_backup = False
 
-        self._view_mode = View(args.past, args.future, None)
+        self._view_mode = View(None, None, None)
 
     def _get_default_calendar(self):
         try:
@@ -773,6 +773,7 @@ if __name__ == "__main__":
     calendar = Calendar()
     # The following line will call sys.exit(...) if the proxy calendar already existed. That is why it goes uncatched, so we don't cleanup the calendar if we didn't create it
     calendar.check_no_proxy_calendar_exists()
+    calendar.set_view_mode(View(args.past, args.future, None))
     _shell_tty_settings = termios.tcgetattr(sys.stdin.fileno())
     try:
         calendar.generate_proxy_calendar()
