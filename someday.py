@@ -99,7 +99,7 @@ class Calendar:
     def _search(self, item, text):
         try:
             m = re.match(r"^\s*(?:\S+\s+){4}(.+?)-\d+$", item)
-            return text in m.group(1)
+            return text.lower() in m.group(1).lower()
         except:
             sys.exit("Internal error: could not process the output of when")
 
