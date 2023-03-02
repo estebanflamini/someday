@@ -414,6 +414,12 @@ def say(what):
         print(line)
     print()
 
+def date_expression(julian_date):
+    if args.useYMD:
+        return get_YMD_date(julian_date)
+    else:
+        return "j=%s" % julian_date
+
 # An utility function that extends input() to allow passing an initial value to
 # be edited
 def my_input(value_to_edit=None):
@@ -500,25 +506,16 @@ def can_comment(calendar, selected_item):
 def reschedule(calendar, selected_item):
     what = calendar.get_event(selected_item)
     date = calendar.get_date_expression(selected_item)
-    _input = None
+    say(what)
     while True:
-        say("Enter a date as YYYY MM DD or a number (negative, zero, or positive) to indicate that many days from now.")
-        say("Enter a blank line to leave the date unchanged.")
-        say(what)
-        _input = my_input(_input)
-        if not _input:
+        j = my_date_input()
+        if not j:
+            return
+        date = date_expression(j)
+        if calendar.update_source_line(selected_item, "%s , %s" % (date, what)):
             break
         else:
-            if is_numeric(_input):
-                date = get_interval(_input)
-                if date is None:
-                    continue
-            else:
-                date = _input
-            if calendar.update_source_line(selected_item, "%s , %s" % (date, what)):
-                break
-            else:
-                say("It looks you entered a wrong date/interval. Try it again.")
+            say("It looks you entered a wrong date/interval, or something has gone wrong. Try it again.")
 
 def can_reschedule(calendar, selected_item):
     return calendar.happens_only_once(selected_item)
