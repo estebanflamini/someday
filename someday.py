@@ -421,6 +421,24 @@ def my_input(value_to_edit=None):
             readline.set_startup_hook()
         print()
 
+# An utility function to enter a date either as YMD or days from now
+def my_date_input():
+    say("Enter a date as YYYY MM DD or how many days from now (negative number=days in the past), or press Enter to return.")
+    while True:
+        _input = my_input()
+        if not _input:
+            return None
+        try:
+            if is_numeric(_input):
+                _input = _input[1:] if _input.startswith("+") else _input
+                return get_julian_date() + int(_input)
+            elif re.match(r"\S+\s+\S+\s+\S+", _input):
+                return get_julian_date(_input)
+            else:
+                say("Wrong format!")
+        except Exception:
+            say("It looks you've entered a wrong date, or there was some underlying error. If the problem persists, try entering the date as a number of days from now instead.")
+
 # A decorator for functions that need to run outside curses
 def outside_curses(func):
     def wrapped(*args, **kwargs):
@@ -476,7 +494,7 @@ def reschedule(calendar, selected_item):
         if not _input:
             break
         else:
-            if is_interval(_input):
+            if is_numeric(_input):
                 date = get_interval(_input)
                 if date is None:
                     continue
@@ -490,9 +508,9 @@ def reschedule(calendar, selected_item):
 def can_reschedule(calendar, selected_item):
     return calendar.happens_only_once(selected_item)
 
-def is_interval(text):
+def is_numeric(text):
     text = text.strip()
-    return text.isdigit() or text.startswith("-") and text[1:].isdigit()
+    return text.isdigit() or text[0] in "+-" and text[1:].isdigit()
 
 def get_interval(text):
     try:
@@ -589,7 +607,7 @@ def new():
             break
         else:
             date = None
-            if is_interval(_input):
+            if is_numeric(_input):
                 date = get_interval(_input)
             elif calendar.parse_expression(_input):
                 date = _input
