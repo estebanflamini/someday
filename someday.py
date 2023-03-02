@@ -685,6 +685,16 @@ def create_view(include_search=True):
     future = j - get_julian_date()
     return View(past, future, what)
 
+def show_calendar():
+    _show_calendar()
+    screen.getch()
+
+@outside_curses
+def _show_calendar():
+    subprocess.run(["when", "--calendar_today_style=bgred", "c"])
+    print()
+    print("Press any key to go back.")
+
 def recreate_menu(menu, calendar, item_list):
     menu.clear()
     if calendar.get_items():
@@ -703,6 +713,7 @@ def recreate_menu(menu, calendar, item_list):
         menu.add(Action("u", "dUplicate", duplicate))
     menu.add(Action("n", "New", new))
     menu.add(Action("v", "View", choose_view_mode))
+    menu.add(Action("m", "Monthly cal.", show_calendar))
 
 # This is the main function for browsing and updating the list of items
 
@@ -784,7 +795,7 @@ def main(stdscr, calendar):
                 pass
             elif action is choose_view_mode:
                  action(calendar, item_list)
-            elif action is new:
+            elif action in [new, show_calendar]:
                 action()
             elif calendar.get_items():
                 selected_item = item_list.selected_item()
