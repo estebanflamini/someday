@@ -684,20 +684,22 @@ def choose_view_mode(calendar, item_list):
 def create_view(include_search=True):
     if include_search:
         say("Search what:")
-        _what = my_input()
-        if not _what:
+        what = my_input()
+        if not what:
             return None
     else:
-        _what = None
+        what = None
     say("From date:")
-    _from = my_input()
-    if not _from:
+    j = my_date_input()
+    if not j:
         return None
+    past = j - get_julian_date()
     say("To date:")
-    _to = my_input()
-    if not _to:
+    j = my_date_input()
+    if not j:
         return None
-    return View(_from, _to, _what)
+    future = j - get_julian_date()
+    return View(past, future, what)
 
 def recreate_menu(menu, calendar, item_list):
     menu.clear()
