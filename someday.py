@@ -376,6 +376,21 @@ class Menu:
 def get_date():
     return subprocess.run(["when", "d"], capture_output=True, text=True).stdout.strip()
 
+_YMD_dates = {}
+
+def get_YMD_date(julian_date):
+    if julian_date in _YMD_dates:
+        return _YMD_dates[julian_date]
+    try:
+        today = get_julian_date()
+        delta = julian_date - today
+        date = subprocess.run(["date", "--date", "%s days" % delta, "+%Y %m %d"], capture_output=True, text=True, check=True).stdout.strip()
+        _YMD_dates[julian_date] = date
+        return date
+    except Exception:
+        say("There was an error while trying to compute the new date. Enter an exact date instead of an interval.")
+        return None
+
 _julian_dates = {}
 
 def get_julian_date(now=None):
