@@ -524,22 +524,6 @@ def is_numeric(text):
     text = text.strip()
     return text.isdigit() or text[0] in "+-" and text[1:].isdigit()
 
-def get_interval(text):
-    try:
-        today = get_julian_date()
-    except Exception:
-        say("Strangely, there was an error while trying to compute the modified julian date corresponding to today. Enter an exact date instead of an interval.")
-        return None
-    delta = int(text)
-    if args.useYMD:
-        try:
-            return subprocess.run(["date", "--date", "%s days" % int(text), "+%Y %m %d"], capture_output=True, text=True, check=True).stdout.strip()
-        except Exception:
-            say("There was an error while trying to compute the new date. Enter an exact date instead of an interval.")
-            return None
-    else:
-        return "j=%s" % (today + delta)
-
 JULIAN_THRESHOLD = r"\bj\s*>\s*(\d+)\b"
 YEARLY_THRESHOLD = r"\by\s*>\s*(\d+)\b"
 DATE_IN_LISTING = r"^\S+\s+(\S+\s+\S+\s+\S+)"
