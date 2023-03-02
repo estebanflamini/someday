@@ -337,9 +337,10 @@ class Menu:
             return
         self._adjust_selected_item()
         width = maxcol - mincol + 1
+        item_width = width // len(self._menu)
         for i, item in enumerate(self._menu):
             color = 2 if self._selected_index == i else 1
-            screen.addstr(minrow, i * (width // len(self._menu)), item.name, curses.color_pair(color))
+            screen.addstr(minrow, i * item_width, item.name[:item_width-1], curses.color_pair(color))
 
     # This method seeks compliance with the 'principle of least surprise':
     # when the menu is recreated by recreate_menu() below, as a result of
