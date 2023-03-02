@@ -613,26 +613,14 @@ def new():
     what = my_input()
     _input = None
     while what:
-        say("When? (Enter a date as YYYY MM DD, a number (negative, zero, or positive) to indicate that many days from now or a valid when\'s expression:")
-        _input = my_input(_input)
-        if not _input:
+        j = my_date_input()
+        if not j:
+            return
+        date = date_expression(j)
+        if calendar.add_source_line("%s , %s" % (date, what)):
             break
         else:
-            date = None
-            if is_numeric(_input):
-                date = get_interval(_input)
-            elif calendar.parse_expression(_input):
-                date = _input
-            else:
-                try:
-                    get_julian_date(_input)
-                    date = _input
-                except Exception:
-                    pass
-            if date and calendar.add_source_line("%s , %s" % (date, what)):
-                break
-            else:
-                say("It looks you entered a wrong date/interval/expression (or there was an error while trying to calculate the corresponding julian date). Try it again.")
+            say("It looks you entered a wrong date/interval, or something has gone wrong. Try it again.")
 
 URL = r"https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
 
