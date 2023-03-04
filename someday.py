@@ -335,12 +335,28 @@ class Menu:
     def show(self, screen, minrow, mincol, maxrow, maxcol):
         if not self._menu:
             return
-        self._adjust_selected_item()
         width = maxcol - mincol + 1
         item_width = width // len(self._menu)
+        squeeze = any(len(x.name) > item_width for x in self._menu)
+        if squeeze:
+            lengths = [len(x.name)+1 for x in self._menu[:-1]] + [len(self._menu[-1].name)]
+        else:
+            lengths = [item_width for x in self._menu]
+        overflow = sum(lengths) > width
+        self._adjust_selected_item()
+        col = 0
         for i, item in enumerate(self._menu):
+            if squeeze and i>0:
+                screen.addstr(minrow, col-1, "|", curses.color_pair(1))
             color = 2 if self._selected_index == i else 1
-            screen.addstr(minrow, i * item_width, item.name[:item_width-1], curses.color_pair(color))
+             # Override bug when writing to the lower right corner
+            try:
+                screen.addstr(minrow, col, item.name, curses.color_pair(color))
+            except Exception:
+                pass
+            col += lengths[i]
+            if col >= width:
+                break
 
     # This method seeks compliance with the 'principle of least surprise':
     # when the menu is recreated by recreate_menu() below, as a result of
