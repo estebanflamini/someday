@@ -827,7 +827,7 @@ def main(stdscr, calendar):
             if action is None:
                 pass
             elif action is choose_view_mode:
-                 action(calendar, item_list)
+                action(calendar, item_list)
             elif action in [new, show_calendar]:
                 action()
             elif calendar.get_items():
