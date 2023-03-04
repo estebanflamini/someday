@@ -351,7 +351,11 @@ class Menu:
             while col + sum(lengths[first_item:self._selected_index+1]) + aux > width:
                 first_item += 1
         if first_item > 0:
-            screen.addstr(minrow, 0, "<", curses.color_pair(1))
+             # Override bug when writing to the lower right corner
+            try:
+                screen.addstr(minrow, 0, "<", curses.color_pair(1))
+            except Exception:
+                pass
         i = first_item
         for item in self._menu[first_item:]:
             if col + len(item.name) > width or i < len(self._menu)-1 and col + len(item.name) + 2 >= width:
