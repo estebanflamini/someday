@@ -344,9 +344,19 @@ class Menu:
             lengths = [item_width for x in self._menu]
         overflow = sum(lengths) > width
         self._adjust_selected_item()
-        col = 0
-        for i, item in enumerate(self._menu):
-            if squeeze and i>0:
+        col = 2 if overflow else 0
+        first_item = 0
+        if overflow:
+            while col + sum(lengths[first_item:self._selected_index+1]) > width:
+                first_item += 1
+        if first_item > 0:
+            screen.addstr(minrow, 0, "<", curses.color_pair(1))
+        i = first_item
+        for item in self._menu[first_item:]:
+            if col + len(item.name) > width or col + len(item.name) == width and i < len(self._menu)-1:
+                screen.addstr(minrow, col, ">", curses.color_pair(1))
+                break
+            elif squeeze and i>first_item:
                 screen.addstr(minrow, col-1, "|", curses.color_pair(1))
             color = 2 if self._selected_index == i else 1
              # Override bug when writing to the lower right corner
@@ -357,6 +367,7 @@ class Menu:
             col += lengths[i]
             if col >= width:
                 break
+            i += 1
 
     # This method seeks compliance with the 'principle of least surprise':
     # when the menu is recreated by recreate_menu() below, as a result of
