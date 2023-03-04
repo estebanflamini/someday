@@ -315,7 +315,7 @@ class Menu:
         self._selected_index = None
         self._selected_menu_item = None
 
-    # Delete the menu, but keeps the last defined _selected_menu_item, to be
+    # Delete the menu, but keep the last defined _selected_menu_item, to be
     # used by _adjust_selected_item(), below.
     def clear(self):
         self._menu = []
@@ -337,7 +337,7 @@ class Menu:
             return
         width = maxcol - mincol + 1
         item_width = width // len(self._menu)
-        squeeze = any(len(x.name) > item_width for x in self._menu)
+        squeeze = any(len(x.name)+1 >= item_width for x in self._menu)
         if squeeze:
             lengths = [len(x.name)+1 for x in self._menu[:-1]] + [len(self._menu[-1].name)]
         else:
@@ -347,13 +347,14 @@ class Menu:
         col = 2 if overflow else 0
         first_item = 0
         if overflow:
-            while col + sum(lengths[first_item:self._selected_index+1]) > width:
+            aux = 2 if self._selected_index < len(self._menu)-1 else 0
+            while col + sum(lengths[first_item:self._selected_index+1]) + aux > width:
                 first_item += 1
         if first_item > 0:
             screen.addstr(minrow, 0, "<", curses.color_pair(1))
         i = first_item
         for item in self._menu[first_item:]:
-            if col + len(item.name) > width or col + len(item.name) == width and i < len(self._menu)-1:
+            if col + len(item.name) > width or i < len(self._menu)-1 and col + len(item.name) + 2 >= width:
                 screen.addstr(minrow, col, ">", curses.color_pair(1))
                 break
             elif squeeze and i>first_item:
