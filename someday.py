@@ -673,10 +673,12 @@ def choose_view_mode(calendar, item_list):
     modes.append(("Use when’s defaults", lambda: View(None, None, None, None)))
     modes.append(("Enter a date range", lambda: create_view(False)))
     modes.append(("Search a string", lambda: create_view()))
-    _args = "%s %s %s" % ("--past=%s " % args.past if args.past else "", "--future=%s " % args.future if args.future else "", "")
+    _search = "--search=%s" % args.search if args.search else None
+    _regex = "--regex=%s" % args.regex if args.regex else None
+    _args = "%s %s %s" % ("--past=%s " % args.past if args.past else "", "--future=%s " % args.future if args.future else "", _search or _regex or "")
     _args = _args.strip()
     if _args:
-        modes.append(("Use given arguments: %s" % _args, lambda: View(args.past, args.future, None, None)))
+        modes.append(("Use given arguments: %s" % _args, lambda: View(args.past, args.future, args.search, args.regex)))
     screen.clear()
     screen.refresh()
     screen.addstr(0, 0, "Choose a view mode:")
