@@ -25,14 +25,16 @@ def get_args():
     parser.add_argument("--calendar", type=str, default=None)
     parser.add_argument("--past", type=int, default=None)
     parser.add_argument("--future", type=int, default=None)
-    parser.add_argument("--search", type=str, default=None)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--search", type=str, default=None)
+    group.add_argument("--regex", type=str, default=None)
     parser.add_argument("--useYMD", action='store_true', default=False)
     parser.add_argument("--diff", action='store_true', default=False)
     return parser.parse_args()
 
 # A class for interacting with the calendar
 
-View = namedtuple("View", ["past", "future", "search"])
+View = namedtuple("View", ["past", "future", "search", "regex"])
 
 class Calendar:
     def __init__(self):
@@ -47,7 +49,7 @@ class Calendar:
         self._modified = False
         self._created_backup = False
 
-        self._view_mode = View(None, None, None)
+        self._view_mode = View(None, None, None, None)
 
     def _get_default_calendar(self):
         try:
@@ -88,7 +90,7 @@ class Calendar:
         tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout
         if tmp.startswith("*"):
             raise Exception("Invalid expression in calendar.")
-        if self._view_mode.search is not None:
+        if self._view_mode.search is not None or self._view_mode.regex is not None:
             tmp = tmp.splitlines()
             tmp = list(filter(lambda x: self._search(x, self._view_mode.search), tmp))
             tmp = "\n".join(tmp)
@@ -99,8 +101,11 @@ class Calendar:
     def _search(self, item, text):
         try:
             m = re.match(r"^\s*(?:\S+\s+){4}(.+?)-\d+$", item)
-            return text.lower() in m.group(1).lower()
-        except:
+            if self._view_mode.regex is not None:
+                return re.search(self._view_mode.regex, m.group(1), flags=re.IGNORECASE) is not None
+            else:
+                return text.lower() in m.group(1).lower()
+        except Exception as e:
             sys.exit("Internal error: could not process the output of when")
 
     def get_items(self):
@@ -665,13 +670,13 @@ def expand(item, minrow, mincol, maxrow, maxcol):
 
 def choose_view_mode(calendar, item_list):
     modes = []
-    modes.append(("Use when’s defaults", lambda: View(None, None, None)))
+    modes.append(("Use when’s defaults", lambda: View(None, None, None, None)))
     modes.append(("Enter a date range", lambda: create_view(False)))
     modes.append(("Search a string", lambda: create_view()))
     _args = "%s %s %s" % ("--past=%s " % args.past if args.past else "", "--future=%s " % args.future if args.future else "", "")
     _args = _args.strip()
     if _args:
-        modes.append(("Use given arguments: %s" % _args, lambda: View(args.past, args.future, None)))
+        modes.append(("Use given arguments: %s" % _args, lambda: View(args.past, args.future, None, None)))
     screen.clear()
     screen.refresh()
     screen.addstr(0, 0, "Choose a view mode:")
@@ -716,7 +721,7 @@ def create_view(include_search=True):
     if not j:
         return None
     future = j - get_julian_date()
-    return View(past, future, what)
+    return View(past, future, what, None)
 
 def show_calendar():
     _show_calendar()
@@ -844,7 +849,7 @@ if __name__ == "__main__":
     calendar = Calendar()
     # The following line will call sys.exit(...) if the proxy calendar already existed. That is why it goes uncatched, so we don't cleanup the calendar if we didn't create it
     calendar.check_no_proxy_calendar_exists()
-    calendar.set_view_mode(View(args.past, args.future, args.search))
+    calendar.set_view_mode(View(args.past, args.future, args.search, args.regex))
     _shell_tty_settings = termios.tcgetattr(sys.stdin.fileno())
     try:
         calendar.generate_proxy_calendar()
