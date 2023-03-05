@@ -671,8 +671,9 @@ def expand(item, minrow, mincol, maxrow, maxcol):
 def choose_view_mode(calendar, item_list):
     modes = []
     modes.append(("Use when’s defaults", lambda: View(None, None, None, None)))
-    modes.append(("Enter a date range", lambda: create_view(False)))
-    modes.append(("Search a string", lambda: create_view()))
+    modes.append(("Enter a date range", lambda: create_view(False, False)))
+    modes.append(("Search a string", lambda: create_view(True, False)))
+    modes.append(("Search a regex", lambda: create_view(True, True)))
     _search = "--search=%s" % args.search if args.search else None
     _regex = "--regex=%s" % args.regex if args.regex else None
     _args = "%s %s %s" % ("--past=%s " % args.past if args.past else "", "--future=%s " % args.future if args.future else "", _search or _regex or "")
@@ -705,14 +706,21 @@ def choose_view_mode(calendar, item_list):
             break
 
 @outside_curses
-def create_view(include_search=True):
+def create_view(include_search, is_regex):
     if include_search:
-        say("Search what:")
+        say("Enter a regular expression, without delimiters" if is_regex else "Search what:")
         what = my_input()
         if not what:
             return None
+        if is_regex:
+            search = None
+            regex = what
+        else:
+            search = what
+            regex = None
     else:
-        what = None
+        search = None
+        regex = None
     say("From date:")
     j = my_date_input()
     if not j:
@@ -723,7 +731,7 @@ def create_view(include_search=True):
     if not j:
         return None
     future = j - get_julian_date()
-    return View(past, future, what, None)
+    return View(past, future, search, regex)
 
 def show_calendar():
     _show_calendar()
