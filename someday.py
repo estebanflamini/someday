@@ -103,7 +103,7 @@ class Calendar:
         try:
             m = re.match(r"^\s*(?:\S+\s+){4}(.+?)-\d+$", item)
             if self._view_mode.regex is not None:
-                return re.search(self._view_mode.regex, m.group(1), flags=re.IGNORECASE) is not None
+                return self._view_mode.regex.search(m.group(1)) is not None
             else:
                 return text.lower() in m.group(1).lower()
         except Exception as e:
@@ -765,15 +765,21 @@ def get_user_view_modes(conf_file):
 def create_view(include_search, is_regex):
     if include_search:
         say("Enter a regular expression, without delimiters" if is_regex else "Search what:")
-        what = my_input()
-        if not what:
-            return None
-        if is_regex:
-            search = None
-            regex = what
-        else:
-            search = what
-            regex = None
+        while True:
+            what = my_input()
+            if not what:
+                return None
+            if is_regex:
+                search = None
+                try:
+                    regex = re.compile(what, flags=re.IGNORECASE)
+                    break
+                except Exception:
+                    say("It looks like you've entered a wrong regex. Try it again.")
+            else:
+                search = what
+                regex = None
+                break
     else:
         search = None
         regex = None
