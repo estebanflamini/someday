@@ -33,9 +33,17 @@ def get_args(args=None):
     parser.add_argument("--diff", action='store_true', default=False)
     return parser.parse_args(args)
 
+def get_search_pattern(args):
+    if args.search:
+        return re.compile(re.escape(args.search), flags=re.IGNORECASE)
+    elif args.regex:
+        return re.compile(args.regex, flags=re.IGNORECASE)
+    else:
+        return None
+
 # A class for interacting with the calendar
 
-View = namedtuple("View", ["past", "future", "search", "regex"])
+View = namedtuple("View", ["past", "future", "search_pattern"])
 
 class Calendar:
     def __init__(self):
@@ -50,7 +58,7 @@ class Calendar:
         self._modified = False
         self._created_backup = False
 
-        self._view_mode = View(None, None, None, None)
+        self._view_mode = View(None, None, None)
 
     def _get_default_calendar(self):
         try:
@@ -91,21 +99,18 @@ class Calendar:
         tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout
         if tmp.startswith("*"):
             raise Exception("Invalid expression in calendar.")
-        if self._view_mode.search is not None or self._view_mode.regex is not None:
+        if self._view_mode.search_pattern is not None:
             tmp = tmp.splitlines()
-            tmp = list(filter(lambda x: self._search(x, self._view_mode.search), tmp))
+            tmp = list(filter(lambda x: self._search(x), tmp))
             tmp = "\n".join(tmp)
         tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
         self._items = [x[0] for x in tmp]
         self._line_numbers = [int(x[1]) for x in tmp]
 
-    def _search(self, item, text):
+    def _search(self, item):
         try:
             m = re.match(r"^\s*(?:\S+\s+){4}(.+?)-\d+$", item)
-            if self._view_mode.regex is not None:
-                return self._view_mode.regex.search(m.group(1)) is not None
-            else:
-                return text.lower() in m.group(1).lower()
+            return self._view_mode.search_pattern.search(m.group(1)) is not None
         except Exception as e:
             sys.exit("Internal error: could not process the output of when")
 
@@ -682,8 +687,8 @@ def choose_view_mode(calendar, item_list):
     _regex = "--regex=%s" % args.regex if args.regex else None
     _args = "%s %s %s" % ("--past=%s " % args.past if args.past else "", "--future=%s " % args.future if args.future else "", _search or _regex or "")
     _args = _args.strip() or "None given"
-    internal_modes.append(InternalViewMode("Use given arguments: %s" % _args, lambda: View(args.past, args.future, args.search, args.regex)))
-    internal_modes.append(InternalViewMode("Use when’s defaults", lambda: View(None, None, None, None)))
+    internal_modes.append(InternalViewMode("Use given arguments: %s" % _args, lambda: View(args.past, args.future, get_search_pattern(args))))
+    internal_modes.append(InternalViewMode("Use when’s defaults", lambda: View(None, None, None)))
     internal_modes.append(InternalViewMode("Enter a date range", lambda: create_view(False, False)))
     internal_modes.append(InternalViewMode("Search a string", lambda: create_view(True, False)))
     internal_modes.append(InternalViewMode("Search a regex", lambda: create_view(True, True)))
@@ -758,7 +763,8 @@ def get_user_view_modes(conf_file):
         tmp = re.findall(r"^(.+?)\s*=\s*(.+)\s*$", conf, flags=re.MULTILINE)
         for mode in tmp:
             args = get_args(shlex.split(mode[1]))
-            modes.append(UserViewMode(mode[0], mode[1], View(args.past, args.future, args.search, args.regex)))
+            pattern = get_search_pattern(args)
+            modes.append(UserViewMode(mode[0], mode[1], View(args.past, args.future, pattern)))
     return modes
 
 @outside_curses
@@ -770,19 +776,16 @@ def create_view(include_search, is_regex):
             if not what:
                 return None
             if is_regex:
-                search = None
                 try:
-                    regex = re.compile(what, flags=re.IGNORECASE)
+                    pattern = re.compile(what, flags=re.IGNORECASE)
                     break
                 except Exception:
                     say("It looks like you've entered a wrong regex. Try it again.")
             else:
-                search = what
-                regex = None
+                pattern = re.compile(re.escape(what), flags=re.IGNORECASE)
                 break
     else:
-        search = None
-        regex = None
+        pattern = None
     say("From date:")
     j = my_date_input()
     if not j:
@@ -793,7 +796,7 @@ def create_view(include_search, is_regex):
     if not j:
         return None
     future = j - get_julian_date()
-    return View(past, future, search, regex)
+    return View(past, future, pattern)
 
 def show_calendar():
     _show_calendar()
@@ -921,7 +924,10 @@ if __name__ == "__main__":
     calendar = Calendar()
     # The following line will call sys.exit(...) if the proxy calendar already existed. That is why it goes uncatched, so we don't cleanup the calendar if we didn't create it
     calendar.check_no_proxy_calendar_exists()
-    calendar.set_view_mode(View(args.past, args.future, args.search, args.regex))
+    try:
+        calendar.set_view_mode(View(args.past, args.future, get_search_pattern(args)))
+    except re.error:
+        sys.exit("Wrong regular expression given.")
     _shell_tty_settings = termios.tcgetattr(sys.stdin.fileno())
     try:
         calendar.generate_proxy_calendar()
