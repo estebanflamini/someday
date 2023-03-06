@@ -707,6 +707,8 @@ def choose_view_mode(calendar, item_list):
             row += 2
     key_for_special_modes = "u"
     for j, mode in enumerate(_user_view_modes):
+        if j == 9:
+            break
         screen.addstr(row, 0, "%s%s: %s = %s" % (key_for_special_modes, j+1, mode.name, mode.args))
         row += 1
     screen.addstr(row, 0, "q: Back")
@@ -754,7 +756,7 @@ def get_user_view_modes(conf_file):
             conf = map(str.strip, f.read().splitlines())
         conf = filter(lambda x: not x.startswith("#"), conf)
         conf = "\n".join(conf)
-        tmp = re.findall(r"^(.+?)\s*=\s*(.+)\s*$", conf)
+        tmp = re.findall(r"^(.+?)\s*=\s*(.+)\s*$", conf, flags=re.MULTILINE)
         for mode in tmp:
             args = get_args(shlex.split(mode[1]))
             modes.append(UserViewMode(mode[0], mode[1], View(args.past, args.future, args.search, args.regex)))
