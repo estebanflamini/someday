@@ -12,6 +12,7 @@ import argparse
 import termios
 import readline
 from time import sleep
+import shlex
 
 # These globals will be populated and used below
 _prog_tty_settings = None
@@ -20,7 +21,7 @@ _shell_cursor = None
 screen = None
 args = None
 
-def get_args():
+def get_args(args=None):
     parser = argparse.ArgumentParser(prog="someday")
     parser.add_argument("--calendar", type=str, default=None)
     parser.add_argument("--past", type=int, default=None)
@@ -30,7 +31,7 @@ def get_args():
     group.add_argument("--regex", type=str, default=None)
     parser.add_argument("--useYMD", action='store_true', default=False)
     parser.add_argument("--diff", action='store_true', default=False)
-    return parser.parse_args()
+    return parser.parse_args(args)
 
 # A class for interacting with the calendar
 
@@ -668,45 +669,93 @@ def expand(item, minrow, mincol, maxrow, maxcol):
     pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
     pad.getch()
 
+UserViewMode = namedtuple("UserViewMode", ["name", "args", "view"])
+InternalViewMode = namedtuple("InternalViewMode", ["name", "func"])
+
+_user_view_modes = None
+
 def choose_view_mode(calendar, item_list):
-    modes = []
-    modes.append(("Use when’s defaults", lambda: View(None, None, None, None)))
+    global _user_view_modes
+
+    internal_modes = []
+    internal_modes.append(InternalViewMode("Use when’s defaults", lambda: View(None, None, None, None)))
     _search = "--search=%s" % args.search if args.search else None
     _regex = "--regex=%s" % args.regex if args.regex else None
     _args = "%s %s %s" % ("--past=%s " % args.past if args.past else "", "--future=%s " % args.future if args.future else "", _search or _regex or "")
     _args = _args.strip()
     if _args:
-        modes.append(("Use given arguments: %s" % _args, lambda: View(args.past, args.future, args.search, args.regex)))
-    modes.append(("Enter a date range", lambda: create_view(False, False)))
-    modes.append(("Search a string", lambda: create_view(True, False)))
-    modes.append(("Search a regex", lambda: create_view(True, True)))
+        internal_modes.append(InternalViewMode("Use given arguments: %s" % _args, lambda: View(args.past, args.future, args.search, args.regex)))
+    internal_modes.append(InternalViewMode("Enter a date range", lambda: create_view(False, False)))
+    internal_modes.append(InternalViewMode("Search a string", lambda: create_view(True, False)))
+    internal_modes.append(InternalViewMode("Search a regex", lambda: create_view(True, True)))
     screen.clear()
     screen.refresh()
     screen.addstr(0, 0, "Choose a view mode:")
     i = 0
     row = 2
-    for mode in modes:
-        screen.addstr(row, 0, "%s: %s" % (i+1, modes[i][0]))
+    for mode in internal_modes:
+        screen.addstr(row, 0, "%s: %s" % (i+1, internal_modes[i][0]))
         i += 1
         row += 1
+    if _user_view_modes is None:
+        conf_file = sys.path[0] + "/someday.viewmodes"
+        try:
+            _user_view_modes = get_user_view_modes(conf_file)
+        except Exception:
+            row += 1
+            screen.addstr(row, 0, "There was an error while trying to read user view modes from file %s" % conf_file)
+            row += 2
+    key_for_special_modes = "u"
+    for j, mode in enumerate(_user_view_modes):
+        screen.addstr(row, 0, "%s%s: %s = %s" % (key_for_special_modes, j+1, mode.name, mode.args))
+        row += 1
     screen.addstr(row, 0, "q: Back")
+    choosing_user_mode = False
+    message_row = row + 2
     while True:
         try:
             key = screen.getkey()
         except KeyboardInterrupt:
             break
         if key.lower() == "q":
-            break
+            if choosing_user_mode:
+                choosing_user_mode = False
+                curses.setsyx(message_row, 0)
+                screen.deleteln()
+                continue
+            else:
+                break
+        elif key.lower() == key_for_special_modes and _user_view_modes:
+            choosing_user_mode = True
+            screen.addstr(message_row, 0, "Enter the number of the user view mode or press q to go back.")
+            continue
         elif not key.isdigit():
             continue
         i = int(key) - 1
-        if i < len(modes):
-            mode = modes[i][1]()
-            if mode is not None:
-                calendar.set_view_mode(mode)
-                calendar.generate_proxy_calendar()
-                item_list.top()
+        if choosing_user_mode and i < len(_user_view_modes):
+            view = _user_view_modes[i].view
+        elif not choosing_user_mode and i < len(internal_modes):
+            view = internal_modes[i].func()
+        else:
+            continue
+        if view is not None:
+            calendar.set_view_mode(view)
+            calendar.generate_proxy_calendar()
+            item_list.top()
             break
+
+def get_user_view_modes(conf_file):
+    modes = []
+    if os.path.exists(conf_file):
+        with open(conf_file) as f:
+            conf = map(str.strip, f.read().splitlines())
+        conf = filter(lambda x: not x.startswith("#"), conf)
+        conf = "\n".join(conf)
+        tmp = re.findall(r"^(.+?)\s*=\s*(.+)\s*$", conf)
+        for mode in tmp:
+            args = get_args(shlex.split(mode[1]))
+            modes.append(UserViewMode(mode[0], mode[1], View(args.past, args.future, args.search, args.regex)))
+    return modes
 
 @outside_curses
 def create_view(include_search, is_regex):
