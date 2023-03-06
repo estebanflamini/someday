@@ -732,17 +732,20 @@ def choose_view_mode(calendar, item_list):
         elif not key.isdigit():
             continue
         i = int(key) - 1
-        if choosing_user_mode and i < len(_user_view_modes):
+        if i < 0:
+            continue
+        elif choosing_user_mode and i < len(_user_view_modes):
             view = _user_view_modes[i].view
         elif not choosing_user_mode and i < len(internal_modes):
             view = internal_modes[i].func()
+            if view is None:
+                break
         else:
             continue
-        if view is not None:
-            calendar.set_view_mode(view)
-            calendar.generate_proxy_calendar()
-            item_list.top()
-            break
+        calendar.set_view_mode(view)
+        calendar.generate_proxy_calendar()
+        item_list.top()
+        break
 
 def get_user_view_modes(conf_file):
     modes = []
