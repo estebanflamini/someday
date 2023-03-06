@@ -691,7 +691,10 @@ def choose_view_mode(calendar, item_list):
         row += 1
     screen.addstr(row, 0, "q: Back")
     while True:
-        key = screen.getkey()
+        try:
+            key = screen.getkey()
+        except KeyboardInterrupt:
+            break
         if key.lower() == "q":
             break
         elif not key.isdigit():
