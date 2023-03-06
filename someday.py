@@ -678,13 +678,12 @@ def choose_view_mode(calendar, item_list):
     global _user_view_modes
 
     internal_modes = []
-    internal_modes.append(InternalViewMode("Use when’s defaults", lambda: View(None, None, None, None)))
     _search = "--search=%s" % args.search if args.search else None
     _regex = "--regex=%s" % args.regex if args.regex else None
     _args = "%s %s %s" % ("--past=%s " % args.past if args.past else "", "--future=%s " % args.future if args.future else "", _search or _regex or "")
-    _args = _args.strip()
-    if _args:
-        internal_modes.append(InternalViewMode("Use given arguments: %s" % _args, lambda: View(args.past, args.future, args.search, args.regex)))
+    _args = _args.strip() or "None given"
+    internal_modes.append(InternalViewMode("Use given arguments: %s" % _args, lambda: View(args.past, args.future, args.search, args.regex)))
+    internal_modes.append(InternalViewMode("Use when’s defaults", lambda: View(None, None, None, None)))
     internal_modes.append(InternalViewMode("Enter a date range", lambda: create_view(False, False)))
     internal_modes.append(InternalViewMode("Search a string", lambda: create_view(True, False)))
     internal_modes.append(InternalViewMode("Search a regex", lambda: create_view(True, True)))
