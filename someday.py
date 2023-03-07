@@ -41,9 +41,29 @@ def get_search_pattern(args):
     else:
         return None
 
-# A class for interacting with the calendar
+# Some data types used by the program
+
+# A View restricts the calendar item shown by the program to a certain date
+# range and possibly a search pattern (regex)
 
 View = namedtuple("View", ["past", "future", "search_pattern"])
+
+# A UserViewMode is defined in an external configuration file by specifying
+# the --past, --future, and --search/--regex arguments. A function reading
+# the configuration file translates the given args to a View
+
+UserViewMode = namedtuple("UserViewMode", ["name", "args", "view"])
+
+# An InternalViewMode is one defined from a function which may implement an
+# interaction with the user (e.g., to enter a search string)
+
+InternalViewMode = namedtuple("InternalViewMode", ["name", "func"])
+
+# An Action is an item in the program's menu
+
+Action = namedtuple("Action", ["key", "name", "action"])
+
+# A class for interacting with the calendar
 
 class Calendar:
     def __init__(self):
@@ -316,8 +336,6 @@ class List:
         return self._selected_row
 
 # A class for showing the menu and keeping track of available actions
-
-Action = namedtuple("Action", ["key", "name", "action"])
 
 class Menu:
     def __init__(self):
@@ -673,9 +691,6 @@ def expand(item, minrow, mincol, maxrow, maxcol):
     minrow = min(minrow, maxrow - height + 1)
     pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
     pad.getch()
-
-UserViewMode = namedtuple("UserViewMode", ["name", "args", "view"])
-InternalViewMode = namedtuple("InternalViewMode", ["name", "func"])
 
 _user_view_modes = None
 
