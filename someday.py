@@ -59,9 +59,9 @@ UserViewMode = namedtuple("UserViewMode", ["name", "args", "view"])
 
 InternalViewMode = namedtuple("InternalViewMode", ["name", "func"])
 
-# An Action is an item in the program's menu
+# A MenuItem is exactly that :)
 
-Action = namedtuple("Action", ["key", "name", "action"])
+MenuItem = namedtuple("MenuItem", ["key", "name", "func"])
 
 # A class for interacting with the calendar
 
@@ -356,10 +356,10 @@ class Menu:
         keys = what.key if isinstance(what.key, list) else [what.key]
         for key in keys:
             if isinstance(key, str):
-                self._key_bindings[ord(key.lower())] = what.action
-                self._key_bindings[ord(key.upper())] = what.action
+                self._key_bindings[ord(key.lower())] = what
+                self._key_bindings[ord(key.upper())] = what
             else:
-                self._key_bindings[key] = what.action
+                self._key_bindings[key] = what
 
     def show(self, screen, minrow, mincol, maxrow, maxcol):
         if not self._menu:
@@ -417,9 +417,9 @@ class Menu:
                     return
         self._selected_menu_item = self._menu[self._selected_index]
 
-    def get_action(self, key):
+    def get_selected_item(self, key):
         if key == 32:
-            return self._selected_menu_item.action
+            return self._selected_menu_item
         elif key in self._key_bindings:
             return self._key_bindings[key]
         else:
@@ -827,21 +827,21 @@ def recreate_menu(menu, calendar, item_list):
     menu.clear()
     if calendar.get_items():
         selected_item = item_list.selected_item()
-        menu.add(Action("e", "Edit", edit))
+        menu.add(MenuItem("e", "Edit", edit))
         if can_delete(calendar, selected_item):
-            menu.add(Action(["d", curses.KEY_DC], "Done (delete)", delete))
+            menu.add(MenuItem(["d", curses.KEY_DC], "Done (delete)", delete))
         if can_reschedule(calendar, selected_item):
-            menu.add(Action("r", "Reschedule", reschedule))
+            menu.add(MenuItem("r", "Reschedule", reschedule))
         if can_comment(calendar, selected_item):
-            menu.add(Action("c", "Comment", comment))
+            menu.add(MenuItem("c", "Comment", comment))
         if can_advance(calendar, selected_item):
-            menu.add(Action("a", "Advance", advance))
+            menu.add(MenuItem("a", "Advance", advance))
         if can_open_url(calendar, selected_item):
-            menu.add(Action("b", "Browse url", open_url))
-        menu.add(Action("u", "dUplicate", duplicate))
-    menu.add(Action("n", "New", new))
-    menu.add(Action("v", "View", choose_view_mode))
-    menu.add(Action("m", "Monthly cal.", show_calendar))
+            menu.add(MenuItem("b", "Browse url", open_url))
+        menu.add(MenuItem("u", "dUplicate", duplicate))
+    menu.add(MenuItem("n", "New", new))
+    menu.add(MenuItem("v", "View", choose_view_mode))
+    menu.add(MenuItem("m", "Monthly cal.", show_calendar))
 
 # This is the main function for browsing and updating the list of items
 
@@ -918,21 +918,21 @@ def main(stdscr, calendar):
         elif chr(key).lower() == 'q':
             break
         else:
-            action = expand if key == 10 else menu.get_action(key)
-            if action is None:
+            func = expand if key == 10 else menu.get_selected_item(key).func
+            if func is None:
                 pass
-            elif action is choose_view_mode:
-                action(calendar, item_list)
-            elif action in [new, show_calendar]:
-                action()
+            elif func is choose_view_mode:
+                func(calendar, item_list)
+            elif func in [new, show_calendar]:
+                func()
             elif calendar.get_items():
                 selected_item = item_list.selected_item()
                 item = calendar.get_item(selected_item)
                 row = first_row + item_list.selected_row()
-                if action is expand:
-                    action(item, row, 0, last_row, width-1)
+                if func is expand:
+                    func(item, row, 0, last_row, width-1)
                 else:
-                    action(calendar, selected_item)
+                    func(calendar, selected_item)
 
 if __name__ == "__main__":
     args = get_args()
