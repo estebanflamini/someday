@@ -814,11 +814,11 @@ def create_view(include_search, is_regex):
     return View(past, future, pattern)
 
 def show_calendar():
-    _show_calendar()
+    _show_monthly_calendar()
     screen.getch()
 
 @outside_curses
-def _show_calendar():
+def _show_monthly_calendar():
     subprocess.run(["when", "--calendar_today_style=bgred", "c"])
     print()
     print("Press any key to go back.")
