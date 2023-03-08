@@ -829,7 +829,7 @@ def recreate_menu(menu, calendar, item_list):
         selected_item = item_list.selected_item()
         menu.add(MenuItem("e", "Edit", edit))
         if can_delete(calendar, selected_item):
-            menu.add(MenuItem(["d", curses.KEY_DC], "Done (delete)", delete))
+            menu.add(MenuItem(["d", curses.KEY_DC], "Done/delete", delete))
         if can_reschedule(calendar, selected_item):
             menu.add(MenuItem("r", "Reschedule", reschedule))
         if can_comment(calendar, selected_item):
