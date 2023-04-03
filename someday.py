@@ -918,7 +918,11 @@ def main(stdscr, calendar):
         elif chr(key).lower() == 'q':
             break
         else:
-            func = expand if key == 10 else menu.get_selected_item(key).func
+            if key == 10:
+                func = expand
+            else:
+                menu_item = menu.get_selected_item(key)
+                func = menu_item.func if menu_item else None
             if func is None:
                 pass
             elif func is choose_view_mode:
