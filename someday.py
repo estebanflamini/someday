@@ -93,7 +93,7 @@ class Calendar:
 
     def _check_no_proxy_calendar_exists(self):
         if os.path.exists(self._proxy_calendar):
-            sys.exit("The calendar seems to be in edition. Delete the file %s and try again." % self._proxy_calendar)
+            sys.exit("The program seems to be already running. If you are sure this is not the case, delete the file %s and try again." % self._proxy_calendar)
 
     def cleanup_proxy_calendar(self):
         os.unlink(self._proxy_calendar)
