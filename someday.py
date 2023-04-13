@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
-import curses
-import subprocess
-import textwrap
 import os
 import re
 import sys
-from collections import namedtuple
-from shutil import copyfile
-import argparse
-import termios
-import readline
-from time import sleep
 import shlex
+import curses
+import termios
+import textwrap
+import argparse
+import readline
+import subprocess
+from time import sleep
+from shutil import copyfile
+from collections import namedtuple
 
 # These globals will be populated and used below
 _prog_tty_settings = None
