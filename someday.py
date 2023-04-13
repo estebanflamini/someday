@@ -905,8 +905,9 @@ def main(stdscr, calendar):
         key = stdscr.getch()
 
         # Handle the cursor keys to navigate the list of items and the menu of actions
-        if key < 0:
-            pass
+        if key < 0: # Resizing of window generates a negative code
+            width, height = os.get_terminal_size()
+            curses.resizeterm(height, width)
         elif key == curses.KEY_UP:
             item_list.up()
         elif key == curses.KEY_DOWN:
