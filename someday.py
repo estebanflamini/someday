@@ -71,6 +71,8 @@ class Calendar:
         self._proxy_calendar = self._calendar + ".SOMEDAY"
         self._backup_calendar = self._calendar + ".SOMEDAY.BAK"
 
+        self._check_no_proxy_calendar_exists()
+
         with open(self._calendar) as infile:
             self._calendar_lines = infile.read().splitlines()
 
@@ -89,7 +91,7 @@ class Calendar:
         except Exception:
             sys.exit("No calendar configuration for 'when' was found.")
 
-    def check_no_proxy_calendar_exists(self):
+    def _check_no_proxy_calendar_exists(self):
         if os.path.exists(self._proxy_calendar):
             sys.exit("The calendar seems to be in edition. Delete the file %s and try again." % self._proxy_calendar)
 
@@ -941,9 +943,14 @@ def main(stdscr, calendar):
 
 if __name__ == "__main__":
     args = get_args()
+    # A check for the existence of a proxy calendar will be performed during
+    # the creation of the calendar object. If a proxy calendar already exists,
+    # that means that the program is already running. In that case, a call to
+    # sys.exit() is done, to exit the current instance of the program. That is
+    # why the creation of the calendar must be outside the try block, to avoid
+    # the cleaning up of the proxy calendar when it wasn't created by this
+    # instance.
     calendar = Calendar()
-    # The following line will call sys.exit(...) if the proxy calendar already existed. That is why it goes uncatched, so we don't cleanup the calendar if we didn't create it
-    calendar.check_no_proxy_calendar_exists()
     try:
         calendar.set_view_mode(View(args.past, args.future, get_search_pattern(args)))
     except re.error:
