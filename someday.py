@@ -100,6 +100,7 @@ class Calendar:
 
     def set_view_mode(self, mode):
         self._view_mode = mode
+        self.generate_proxy_calendar()
 
     # Copy the when's calendary to a temporary file where each non-empty line is line-numbered, and get upcoming items from there
 
@@ -766,7 +767,6 @@ def choose_view_mode(calendar, item_list):
         else:
             continue
         calendar.set_view_mode(view)
-        calendar.generate_proxy_calendar()
         item_list.top()
         break
 
@@ -957,7 +957,6 @@ if __name__ == "__main__":
         sys.exit("Wrong regular expression given.")
     _shell_tty_settings = termios.tcgetattr(sys.stdin.fileno())
     try:
-        calendar.generate_proxy_calendar()
         curses.wrapper(main, calendar)
         calendar.write_calendar()
     except KeyboardInterrupt:
