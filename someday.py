@@ -100,11 +100,11 @@ class Calendar:
 
     def set_view_mode(self, mode):
         self._view_mode = mode
-        self.generate_proxy_calendar()
+        self._generate_proxy_calendar()
 
     # Copy the when's calendary to a temporary file where each non-empty line is line-numbered, and get upcoming items from there
 
-    def generate_proxy_calendar(self):
+    def _generate_proxy_calendar(self):
         i = 0
         with open(self._proxy_calendar, "w") as outfile:
             for line in self._calendar_lines:
@@ -250,7 +250,7 @@ class Calendar:
         old_value = self._calendar_lines[line_number]
         self._calendar_lines[line_number] = what
         try:
-            self.generate_proxy_calendar()
+            self._generate_proxy_calendar()
             self._modified = True
             return True
         except Exception:
@@ -262,7 +262,7 @@ class Calendar:
         old_value = self._calendar_lines[line_number]
         del self._calendar_lines[line_number]
         try:
-            self.generate_proxy_calendar()
+            self._generate_proxy_calendar()
             self._modified = True
             return True
         except Exception: # This should never happen, but just in case...
@@ -272,7 +272,7 @@ class Calendar:
     def add_source_line(self, what):
         self._calendar_lines.append(what)
         try:
-            self.generate_proxy_calendar()
+            self._generate_proxy_calendar()
             self._modified = True
             return True
         except Exception:
