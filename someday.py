@@ -100,11 +100,11 @@ class Calendar:
 
     def set_view_mode(self, mode):
         self._view_mode = mode
-        self._generate_proxy_calendar()
+        self._update_view()
 
     # Copy the when's calendary to a temporary file where each non-empty line is line-numbered, and get upcoming items from there
 
-    def _generate_proxy_calendar(self):
+    def _update_view(self):
         i = 0
         with open(self._proxy_calendar, "w") as outfile:
             for line in self._calendar_lines:
@@ -127,7 +127,7 @@ class Calendar:
             tmp = list(filter(lambda x: self._search(x), tmp))
             tmp = "\n".join(tmp)
         tmp = re.findall(r"^(.+)-(\d+)$", tmp, flags=re.MULTILINE)
-        self._items = [x[0] for x in tmp]
+        self._shown_items = [x[0] for x in tmp]
         self._line_numbers = [int(x[1]) for x in tmp]
 
     def _search(self, item):
@@ -138,10 +138,10 @@ class Calendar:
             sys.exit("Internal error: could not process the output of when")
 
     def get_items(self):
-        return self._items
+        return self._shown_items
 
     def get_item(self, index):
-        return self._items[index]
+        return self._shown_items[index]
 
     def get_source_line(self, index):
         line_number = self._line_numbers[index]
@@ -250,7 +250,7 @@ class Calendar:
         old_value = self._calendar_lines[line_number]
         self._calendar_lines[line_number] = what
         try:
-            self._generate_proxy_calendar()
+            self._update_view()
             self._modified = True
             return True
         except Exception:
@@ -262,7 +262,7 @@ class Calendar:
         old_value = self._calendar_lines[line_number]
         del self._calendar_lines[line_number]
         try:
-            self._generate_proxy_calendar()
+            self._update_view()
             self._modified = True
             return True
         except Exception: # This should never happen, but just in case...
@@ -272,7 +272,7 @@ class Calendar:
     def add_source_line(self, what):
         self._calendar_lines.append(what)
         try:
-            self._generate_proxy_calendar()
+            self._update_view()
             self._modified = True
             return True
         except Exception:
