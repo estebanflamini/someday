@@ -82,6 +82,8 @@ class Calendar:
 
         self._view_mode = View(None, None, None)
 
+        self._last_modified = os.path.getmtime(self._calendar)
+
     def _get_default_calendar(self):
         try:
             with open("%s/.when/preferences" % os.environ["HOME"]) as f:
@@ -146,6 +148,11 @@ class Calendar:
     def get_source_line(self, index):
         line_number = self._line_numbers[index]
         return self._calendar_lines[line_number]
+
+    # Check to see if writing the calendar could overwrite changes done by an external process
+
+    def conflicting_changes(self):
+        return self._modified and self._last_modified != os.path.getmtime(self._calendar)
 
     # Update the true calendar
 
@@ -957,8 +964,17 @@ if __name__ == "__main__":
         sys.exit("Wrong regular expression given.")
     _shell_tty_settings = termios.tcgetattr(sys.stdin.fileno())
     try:
-        curses.wrapper(main, calendar)
-        calendar.write_calendar()
+        while True:
+            curses.wrapper(main, calendar)
+            if calendar.conflicting_changes():
+                print()
+                say("It appears that the calendar file was modified by other process since the program was opened. Are you sure you want to overwrite it? y/[n]: ")
+                overwrite = input().lower().strip() == "y"
+            else:
+                overwrite = True
+            if overwrite:
+                calendar.write_calendar()
+                break
     except KeyboardInterrupt:
         print("Exiting without changes.")
     finally:
