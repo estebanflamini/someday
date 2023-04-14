@@ -954,13 +954,6 @@ def main(stdscr, calendar):
 
 if __name__ == "__main__":
     args = get_args()
-    # A check for the existence of a proxy calendar will be performed during
-    # the creation of the calendar object. If a proxy calendar already exists,
-    # that means that the program is already running. In that case, a call to
-    # sys.exit() is done, to exit the current instance of the program. That is
-    # why the creation of the calendar must be outside the try block, to avoid
-    # the cleaning up of the proxy calendar when it wasn't created by this
-    # instance.
     calendar = Calendar()
     try:
         calendar.set_view_mode(View(args.past, args.future, get_search_pattern(args)))
