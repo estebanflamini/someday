@@ -151,18 +151,22 @@ class Calendar:
 
     # Check to see if writing the calendar could overwrite changes done by an external process
 
+    def modified(self):
+        return self._modified
+
+    # Check to see if writing the calendar could overwrite changes done by an external process
+
     def conflicting_changes(self):
-        return self._modified and self._last_modified != os.path.getmtime(self._calendar)
+        return self._last_modified != os.path.getmtime(self._calendar)
 
     # Update the true calendar
 
     def write_calendar(self):
-        if self._modified:
-            copyfile(self._calendar, self._backup_calendar)
-            self._created_backup = True
-            with open(self._calendar, "w") as f:
-                for line in self._calendar_lines:
-                    print(line, file=f)
+        copyfile(self._calendar, self._backup_calendar)
+        self._created_backup = True
+        with open(self._calendar, "w") as f:
+            for line in self._calendar_lines:
+                print(line, file=f)
 
     # Show differences between the calendar and the generated backup
     def diff(self):
@@ -966,13 +970,15 @@ if __name__ == "__main__":
     try:
         while True:
             curses.wrapper(main, calendar)
-            if calendar.conflicting_changes():
+            if not calendar.modified():
+                break
+            elif calendar.conflicting_changes():
                 print()
                 say("It appears that the calendar file was modified by other process since the program was opened. Are you sure you want to overwrite it? y/[n]: ")
-                overwrite = input().lower().strip() == "y"
+                if input().lower().strip() == "y":
+                    calendar.write_calendar()
+                    break
             else:
-                overwrite = True
-            if overwrite:
                 calendar.write_calendar()
                 break
     except KeyboardInterrupt:
