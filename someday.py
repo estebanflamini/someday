@@ -63,6 +63,9 @@ InternalViewMode = namedtuple("InternalViewMode", ["name", "func"])
 
 MenuItem = namedtuple("MenuItem", ["key", "name", "func"])
 
+class InternalException(Exception):
+    pass
+
 # A class for interacting with the calendar
 
 class Calendar:
@@ -90,7 +93,7 @@ class Calendar:
                 prefs = f.read()
             m = re.match(r"^\s*calendar\s*=\s*(.+)$", prefs, flags=re.MULTILINE)
             return m.group(1).strip()
-        except Exception:
+        except (FileNotFoundError, AttributeError):
             sys.exit("No calendar configuration for 'when' was found.")
 
     def _check_no_proxy_calendar_exists(self):
@@ -121,9 +124,12 @@ class Calendar:
         if self._view_mode.future is not None:
             d.append("--future=%s" % self._view_mode.future)
 
-        tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout
+        try:
+            tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout
+        except subprocess.CalledProcessError:
+            raise InternalException("Error at when’s invocation.")
         if tmp.startswith("*"):
-            raise Exception("Invalid expression in calendar.")
+            raise InternalException("Invalid expression in calendar.")
         if self._view_mode.search_pattern is not None:
             tmp = tmp.splitlines()
             tmp = list(filter(lambda x: self._search(x), tmp))
@@ -136,7 +142,7 @@ class Calendar:
         try:
             m = re.match(r"^\s*(?:\S+\s+){4}(.+?)-\d+$", item)
             return self._view_mode.search_pattern.search(m.group(1)) is not None
-        except Exception as e:
+        except AttributeError:
             sys.exit("Internal error: could not process the output of when")
 
     def get_items(self):
@@ -264,7 +270,7 @@ class Calendar:
             self._update_view()
             self._modified = True
             return True
-        except Exception:
+        except InternalException:
             self._calendar_lines[line_number] = old_value
             return False
 
@@ -276,7 +282,7 @@ class Calendar:
             self._update_view()
             self._modified = True
             return True
-        except Exception: # This should never happen, but just in case...
+        except InternalException: # This should never happen, but just in case...
             self._calendar_lines.insert(line_number, old_value)
             return False
 
@@ -286,7 +292,7 @@ class Calendar:
             self._update_view()
             self._modified = True
             return True
-        except Exception:
+        except InternalException:
             del self._calendar_lines[-1]
             return False
 
@@ -397,7 +403,7 @@ class Menu:
              # Override bug when writing to the lower right corner
             try:
                 screen.addstr(minrow, 0, "<", curses.color_pair(1))
-            except Exception:
+            except curses.error:
                 pass
         i = first_item
         for item in self._menu[first_item:]:
@@ -410,7 +416,7 @@ class Menu:
              # Override bug when writing to the lower right corner
             try:
                 screen.addstr(minrow, col, item.name, curses.color_pair(color))
-            except Exception:
+            except curses.error:
                 pass
             col += lengths[i]
             if col >= width:
@@ -463,7 +469,7 @@ def get_YMD_date(julian_date):
         date = subprocess.run(["date", "--date", "%s days" % delta, "+%Y %m %d"], capture_output=True, text=True, check=True).stdout.strip()
         _YMD_dates[julian_date] = date
         return date
-    except Exception:
+    except (subprocess.CalledProcessError, InternalException):
         say("There was an error while trying to compute the new date. Enter an exact date instead of an interval.")
         return None
 
@@ -477,11 +483,14 @@ def get_julian_date(now=None):
         # The date is not surrounded by ', because no shell processing will be
         # done and we must pass the string as it will be received by when
         d.append("--now=%s" % now)
-    tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout.strip()
-    m = re.search(r"(\d{5})\.$", tmp)
-    j = int(m.group(1)) if m else None
-    _julian_dates[now] = j
-    return j
+    try:
+        tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout.strip()
+        m = re.search(r"(\d{5})\.$", tmp)
+        j = int(m.group(1)) if m else None
+        _julian_dates[now] = j
+        return j
+    except (subprocess.CalledProcessError, AttributeError):
+        raise InternalException("Error while getting julian date.")
 
 def say(what):
     width = os.get_terminal_size()[0]
@@ -533,7 +542,7 @@ def my_date_input():
                 return get_julian_date(_input)
             else:
                 say("Wrong format!")
-        except Exception:
+        except (re.error, InternalException):
             say("It looks you've entered a wrong date, or there was some underlying error. If the problem persists, try entering the date as a number of days from now instead.")
 
 # A decorator for functions that need to run outside curses
@@ -621,7 +630,7 @@ def advance(calendar, selected_item):
             m = re.match(YEAR_IN_LISTING, item)
             regex = YEARLY_THRESHOLD
             repl = m.group(1)
-    except Exception:
+    except (re.error, AttributeError):
         screen.clear()
         screen.refresh()
         say("There has been an error while trying to calculate the advanced date. Press any key to return to the listing.")
@@ -734,10 +743,11 @@ def choose_view_mode(calendar, item_list):
         conf_file = sys.path[0] + "/someday.viewmodes"
         try:
             _user_view_modes = get_user_view_modes(conf_file)
-        except Exception:
+        except InternalException:
             row += 1
             screen.addstr(row, 0, "There was an error while trying to read user view modes from file %s" % conf_file)
             row += 2
+            _user_view_modes = []
     key_for_special_modes = "u"
     for j, mode in enumerate(_user_view_modes):
         if j == 9:
@@ -784,15 +794,18 @@ def choose_view_mode(calendar, item_list):
 def get_user_view_modes(conf_file):
     modes = []
     if os.path.exists(conf_file):
-        with open(conf_file) as f:
-            conf = map(str.strip, f.read().splitlines())
-        conf = filter(lambda x: not x.startswith("#"), conf)
-        conf = "\n".join(conf)
-        tmp = re.findall(r"^(.+?)\s*=\s*(.+)\s*$", conf, flags=re.MULTILINE)
-        for mode in tmp:
-            args = get_args(shlex.split(mode[1]))
-            pattern = get_search_pattern(args)
-            modes.append(UserViewMode(mode[0], mode[1], View(args.past, args.future, pattern)))
+        try:
+            with open(conf_file) as f:
+                conf = map(str.strip, f.read().splitlines())
+            conf = filter(lambda x: not x.startswith("#"), conf)
+            conf = "\n".join(conf)
+            tmp = re.findall(r"^(.+?)\s*=\s*(.+)\s*$", conf, flags=re.MULTILINE)
+            for mode in tmp:
+                args = get_args(shlex.split(mode[1]))
+                pattern = get_search_pattern(args)
+                modes.append(UserViewMode(mode[0], mode[1], View(args.past, args.future, pattern)))
+        except (FileNotFoundError, re.error):
+            raise InternalException("Error while getting user-defined view modes")
     return modes
 
 @outside_curses
@@ -807,7 +820,7 @@ def create_view(include_search, is_regex):
                 try:
                     pattern = re.compile(what, flags=re.IGNORECASE)
                     break
-                except Exception:
+                except re.error:
                     say("It looks like you've entered a wrong regex. Try it again.")
             else:
                 pattern = re.compile(re.escape(what), flags=re.IGNORECASE)
@@ -884,7 +897,7 @@ def main(stdscr, calendar):
 
     try:
         julian_date = get_julian_date()
-    except Exception:
+    except InternalException:
         julian_date = "Unable to determine."
 
     # Main loop for handling key inputs
