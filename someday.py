@@ -127,9 +127,9 @@ class Calendar:
         try:
             tmp = subprocess.run(d, capture_output=True, text=True, check=True).stdout
         except subprocess.CalledProcessError:
-            raise InternalException("Error at when’s invocation.")
+            raise InternalException
         if tmp.startswith("*"):
-            raise InternalException("Invalid expression in calendar.")
+            raise InternalException
         if self._view_mode.search_pattern is not None:
             tmp = tmp.splitlines()
             tmp = list(filter(lambda x: self._search(x), tmp))
@@ -490,7 +490,7 @@ def get_julian_date(now=None):
         _julian_dates[now] = j
         return j
     except (subprocess.CalledProcessError, AttributeError):
-        raise InternalException("Error while getting julian date.")
+        raise InternalException
 
 def say(what):
     width = os.get_terminal_size()[0]
@@ -805,7 +805,7 @@ def get_user_view_modes(conf_file):
                 pattern = get_search_pattern(args)
                 modes.append(UserViewMode(mode[0], mode[1], View(args.past, args.future, pattern)))
         except (FileNotFoundError, re.error):
-            raise InternalException("Error while getting user-defined view modes")
+            raise InternalException
     return modes
 
 @outside_curses
