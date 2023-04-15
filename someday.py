@@ -624,7 +624,7 @@ def advance(calendar, selected_item):
     except Exception:
         screen.clear()
         screen.refresh()
-        say("There has been an error while trying to calculate the advanced date.")
+        say("There has been an error while trying to calculate the advanced date. Press any key to return to the listing.")
         screen.getch()
         return
     calendar.update_source_line(selected_item, re.sub(regex, "%s>%s" % (variable_to_replace, repl), line))
