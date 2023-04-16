@@ -41,8 +41,8 @@ def get_args(args=None):
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--search", type=str, default=None)
     group.add_argument("--regex", type=str, default=None)
-    parser.add_argument("--useYMD", action='store_true', default=False)
-    parser.add_argument("--diff", action='store_true', default=False)
+    parser.add_argument("--useYMD", action="store_true", default=False)
+    parser.add_argument("--diff", action="store_true", default=False)
     return parser.parse_args(args)
 
 def get_search_pattern(args):
@@ -594,7 +594,7 @@ def can_delete(calendar, selected_item):
     return calendar.happens_only_once(selected_item)
 
 def comment(calendar, selected_item):
-    calendar.update_source_line(selected_item, '#' + calendar.get_source_line(selected_item))
+    calendar.update_source_line(selected_item, "#" + calendar.get_source_line(selected_item))
 
 def can_comment(calendar, selected_item):
     return calendar.happens_only_once(selected_item)
@@ -954,7 +954,7 @@ def main(stdscr, calendar):
             menu.left()
         elif key == curses.KEY_RIGHT:
             menu.right()
-        elif chr(key).lower() == 'q':
+        elif chr(key).lower() == "q":
             break
         else:
             if key == 10:
