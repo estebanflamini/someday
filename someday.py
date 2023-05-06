@@ -55,25 +55,29 @@ def get_search_pattern(args):
 
 # Some data types used by the program
 
-# A View restricts the calendar item shown by the program to a certain date
+# Views restrict the calendar items shown by the program to a certain date
 # range and possibly a search pattern (regex)
 
 View = namedtuple("View", ["past", "future", "search_pattern"])
 
-# A UserViewMode is defined in an external configuration file by specifying
-# the --past, --future, and --search/--regex arguments. A function reading
-# the configuration file translates the given args to a View
+# UserViewModes are defined in an external configuration file which specifies
+# the --past, --future, and --search/--regex arguments. A function which reads
+# the configuration file will translate those arguments to a View
 
 UserViewMode = namedtuple("UserViewMode", ["name", "args", "view"])
 
-# An InternalViewMode is one defined from a function which may implement an
-# interaction with the user (e.g., to enter a search string)
+# InternalViewModes are defined from functions which may implement an
+# interaction with the user (e.g., entering a search string)
 
 InternalViewMode = namedtuple("InternalViewMode", ["name", "func"])
 
-# A MenuItem is exactly that :)
+# MenuItems contain a function to be called to perform some action, and map
+# keypresses to those functions.
 
 MenuItem = namedtuple("MenuItem", ["key", "name", "func"])
+
+# A class to map different exceptions that can be thrown during program
+# execution to a single type
 
 class InternalException(Exception):
     pass
@@ -122,12 +126,10 @@ class Calendar:
     # Copy the when's calendary to a temporary file where each non-empty line is line-numbered, and get upcoming items from there
 
     def _update_view(self):
-        i = 0
         with open(self._proxy_calendar, "w") as outfile:
-            for line in self._calendar_lines:
+            for i, line in enumerate(self._calendar_lines):
                 tmp_line = "%s-%s" % (line, i) if line.strip() else line
                 print(tmp_line, file=outfile)
-                i += 1
 
         d = ["when", "--calendar=%s" % self._proxy_calendar, "--noheader", "--wrap=0"]
 
@@ -166,8 +168,6 @@ class Calendar:
     def get_source_line(self, index):
         line_number = self._line_numbers[index]
         return self._calendar_lines[line_number]
-
-    # Check to see if writing the calendar could overwrite changes done by an external process
 
     def modified(self):
         return self._modified
