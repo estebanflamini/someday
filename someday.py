@@ -38,6 +38,8 @@ def get_args(args=None):
     parser.add_argument("--calendar", type=str, default=None)
     parser.add_argument("--past", type=int, default=None)
     parser.add_argument("--future", type=int, default=None)
+    parser.add_argument("--past-for-search", type=int, default=None)
+    parser.add_argument("--future-for-search", type=int, default=None)
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--search", type=str, default=None)
     group.add_argument("--regex", type=str, default=None)
@@ -839,16 +841,22 @@ def create_view(include_search, is_regex):
                 break
     else:
         pattern = None
-    say(_("From date:"))
-    j = my_date_input()
-    if not j:
-        return None
-    past = j - get_julian_date()
-    say(_("To date:"))
-    j = my_date_input()
-    if not j:
-        return None
-    future = j - get_julian_date()
+    if args.past_for_search is None:
+        say(_("From date:"))
+        j = my_date_input()
+        if not j:
+            return None
+        past = j - get_julian_date()
+    else:
+        past = args.past_for_search
+    if args.future_for_search is None:
+        say(_("To date:"))
+        j = my_date_input()
+        if not j:
+            return None
+        future = j - get_julian_date()
+    else:
+        future = args.future_for_search
     return View(past, future, pattern)
 
 def show_calendar():
