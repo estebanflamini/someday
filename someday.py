@@ -43,7 +43,6 @@ def get_args(args=None):
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--search", type=str, default=None)
     group.add_argument("--regex", type=str, default=None)
-    parser.add_argument("--useYMD", action="store_true", default=False)
     parser.add_argument("--diff", action="store_true", default=False)
     return parser.parse_args(args)
 
@@ -513,12 +512,6 @@ def say(what):
         print(line)
     print()
 
-def date_expression(julian_date):
-    if args.useYMD:
-        return get_YMD_date(julian_date)
-    else:
-        return "j=%s" % julian_date
-
 # An utility function that extends input() to allow passing an initial value to
 # be edited
 def my_input(value_to_edit=None):
@@ -610,7 +603,7 @@ def reschedule(calendar, selected_item):
         j = my_date_input()
         if not j:
             return
-        date = date_expression(j)
+        date = get_YMD_date(j)
         if calendar.update_source_line(selected_item, "%s , %s" % (date, what)):
             break
         else:
@@ -699,7 +692,7 @@ def new():
         j = my_date_input()
         if not j:
             return
-        date = date_expression(j)
+        date = get_YMD_date(j)
         if calendar.add_source_line("%s , %s" % (date, what)):
             break
         else:
