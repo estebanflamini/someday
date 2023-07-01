@@ -502,7 +502,7 @@ def get_julian_date(now=None):
         j = int(m.group(1)) if m else None
         _julian_dates[now] = j
         return j
-    except (subprocess.CalledProcessError, AttributeError):
+    except (subprocess.CalledProcessError, AttributeError, UnicodeDecodeError):
         raise InternalException
 
 def say(what):
@@ -545,7 +545,7 @@ def my_date_input():
             if is_numeric(_input):
                 _input = _input[1:] if _input.startswith("+") else _input
                 return get_julian_date() + int(_input)
-            elif re.match(r"\S+\s+\S+\s+\S+", _input):
+            elif re.match(r"\d+\s+\S+\s+\d+", _input):
                 return get_julian_date(_input)
             else:
                 say(_("Wrong format!"))
