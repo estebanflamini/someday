@@ -824,9 +824,9 @@ def _has_yearly_threshold(date):
 
 def _variable_to_replace(date):
     if _has_julian_threshold(date):
-        return "j"
+        return "j" if not _has_yearly_threshold(date) else None
     elif _has_yearly_threshold(date):
-        return "y"
+        return "y" if not _has_julian_threshold(date) else None
     else:
         return None
 
