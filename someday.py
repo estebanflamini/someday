@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__version__ = "1.0"
+__version__ = "1.0.1"
 
 import os
 import re
@@ -381,11 +381,16 @@ class List:
                 if i >= self._height:
                     break
                 color = 2 if i == self._selected_row else 1
-                screen.addstr(
-                    minrow + i, mincol, item[:width], curses.color_pair(color)
+                my_addstr(
+                    screen,
+                    minrow + i,
+                    mincol,
+                    item[:width],
+                    curses.color_pair(color),
                 )
         else:
-            screen.addstr(
+            my_addstr(
+                screen,
                 minrow,
                 mincol,
                 _("No items were found for the specified dates."),
@@ -479,11 +484,7 @@ class Menu:
             ):
                 first_item += 1
         if first_item > 0:
-            # Override bug when writing to the lower right corner
-            try:
-                screen.addstr(minrow, 0, "<", curses.color_pair(1))
-            except curses.error:
-                pass
+            my_addstr(screen, minrow, 0, "<")
         i = first_item
         for item in self._menu[first_item:]:
             if (
@@ -491,16 +492,12 @@ class Menu:
                 or i < len(self._menu) - 1
                 and col + len(item.name) + 2 >= width
             ):
-                screen.addstr(minrow, col, ">", curses.color_pair(1))
+                my_addstr(screen, minrow, col, ">")
                 break
             elif squeeze and i > first_item:
-                screen.addstr(minrow, col - 1, "|", curses.color_pair(1))
+                my_addstr(screen, minrow, col - 1, "|")
             color = 2 if self._selected_index == i else 1
-            # Override bug when writing to the lower right corner
-            try:
-                screen.addstr(minrow, col, item.name, curses.color_pair(color))
-            except curses.error:
-                pass
+            my_addstr(screen, minrow, col, item.name, curses.color_pair(color))
             col += lengths[i]
             if col >= width:
                 break
@@ -601,6 +598,21 @@ def say(what):
     for line in what:
         print(line)
     print()
+
+
+# An utility function to override a bug that occurs when writing to the lower
+# right corner
+def my_addstr(screen, minrow, col, what, color=None):
+    # The following line is OK because this function will only be called after
+    # initializing curses
+    color = color or curses.color_pair(1)
+    n = len(what)
+    while n > 0:
+        try:
+            screen.addstr(minrow, col, what[0:n], color)
+            break
+        except curses.error:
+            n -= 1
 
 
 # An utility function that extends input() to allow passing an initial value to
@@ -883,7 +895,7 @@ def expand(item, minrow, mincol, maxrow, maxcol):
     pad = curses.newpad(height, width)
     pad.border()
     for i, line in enumerate(lines):
-        pad.addstr(i + 1, 1, line)
+        my_addstr(pad, i + 1, 1, line)
     minrow = min(minrow, maxrow - height + 1)
     pad.refresh(0, 0, minrow, mincol, maxrow, maxcol)
     pad.getch()
@@ -934,7 +946,7 @@ def choose_view_mode(calendar, item_list):
     i = 0
     row = 2
     for mode in internal_modes:
-        screen.addstr(row, 0, "%s: %s" % (i + 1, internal_modes[i][0]))
+        my_addstr(screen, row, 0, "%s: %s" % (i + 1, internal_modes[i][0]))
         i += 1
         row += 1
     if _user_view_modes is None:
@@ -943,7 +955,8 @@ def choose_view_mode(calendar, item_list):
             _user_view_modes = get_user_view_modes(conf_file)
         except InternalException:
             row += 1
-            screen.addstr(
+            my_addstr(
+                screen,
                 row,
                 0,
                 _(
@@ -958,14 +971,15 @@ def choose_view_mode(calendar, item_list):
     for j, mode in enumerate(_user_view_modes):
         if j == 9:
             break
-        screen.addstr(
+        my_addstr(
+            screen,
             row,
             0,
             "%s%s: %s = %s"
             % (key_for_special_modes, j + 1, mode.name, mode.args),
         )
         row += 1
-    screen.addstr(row, 0, "q: " + _("Back"))
+    my_addstr(screen, row, 0, "q: " + _("Back"))
     choosing_user_mode = False
     message_row = row + 2
     while True:
@@ -983,7 +997,8 @@ def choose_view_mode(calendar, item_list):
                 break
         elif key.lower() == key_for_special_modes and _user_view_modes:
             choosing_user_mode = True
-            screen.addstr(
+            my_addstr(
+                screen,
                 message_row,
                 0,
                 _(
