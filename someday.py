@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 import os
 import re
@@ -1077,7 +1077,7 @@ def create_view(include_search, is_regex):
                 break
     else:
         pattern = None
-    if args.past_for_search is None:
+    if not include_search or args.past_for_search is None:
         say(_("From date:"))
         j = my_date_input()
         if not j:
@@ -1085,7 +1085,7 @@ def create_view(include_search, is_regex):
         past = j - get_julian_date()
     else:
         past = args.past_for_search
-    if args.future_for_search is None:
+    if not include_search or args.future_for_search is None:
         say(_("To date:"))
         j = my_date_input()
         if not j:
